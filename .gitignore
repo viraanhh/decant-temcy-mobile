@@ -31,7 +31,10 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.*
+!.env.example
+
 
 # typescript
 *.tsbuildinfo
@@ -39,3 +42,5 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+Get-ChildItem src, App.js, app.json -Recurse -Include *.js,*.json | Select-String -Pattern "secret|api_?key|apikey|token|client_?id|AIza|Mid-|password" | Select-Object Path, LineNumber
