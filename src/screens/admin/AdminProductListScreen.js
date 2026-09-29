@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, Alert } from "react-native";
+import { View, Text, FlatList, ScrollView, Pressable, StyleSheet, ActivityIndicator, Alert, Keyboard, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
@@ -19,7 +19,9 @@ export default function AdminProductListScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // Ambil ukuran area aman (status bar / notch) dari sistem
+  // State Pull-to-Refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const insets = useSafeAreaInsets();
 
   useFocusEffect(
@@ -29,10 +31,19 @@ export default function AdminProductListScreen({ navigation }) {
     }, [])
   );
 
-  const handleDelete = (product) => {
-    // Ambil ID yang benar (dukung product_id maupun id)
-    const productId = product.product_id || product.id;
+  // Handler Pull-to-Refresh
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const data = await getAllProducts();
+      setProducts(data);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
+  const handleDelete = (product) => {
+    const productId = product.product_id || product.id;
     Alert.alert(
       "Hapus Produk",
       `Nonaktifkan "${product.product_name}"? Produk tidak akan tampil lagi di katalog customer.`,
@@ -42,12 +53,16 @@ export default function AdminProductListScreen({ navigation }) {
           text: "Hapus", style: "destructive",
           onPress: async () => {
             await deleteAdminProduct(productId);
-            // Hapus dari state lokal
             setProducts((prev) => prev.filter((p) => (p.product_id || p.id) !== productId));
           },
         },
       ]
     );
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    Keyboard.dismiss();
   };
 
   const filteredProducts = products.filter((p) =>
@@ -71,22 +86,27 @@ export default function AdminProductListScreen({ navigation }) {
           onChangeText={setSearchQuery}
           placeholder="Cari produk atau brand..."
         />
+        {searchQuery.length > 0 && (
+          <Pressable onPress={clearSearch} style={styles.clearButton} hitSlop={10}>
+            <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+          </Pressable>
+        )}
       </View>
 
       {isLoading ? (
         <ActivityIndicator color={COLORS.primary} style={{ marginTop: 40 }} />
+      ) : filteredProducts.length === 0 ? (
+        <ScrollView contentContainerStyle={{ flex: 1 }} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}>
+          <Text style={{ color: COLORS.textMuted, textAlign: "center", marginTop: 40 }}>
+            {searchQuery ? "Produk tidak ditemukan." : "Belum ada produk."}
+          </Text>
+        </ScrollView>
       ) : (
         <FlatList
           data={filteredProducts}
-          // FIX BULLETPROOF: Gabungkan ID produk dan index urutan. 
-          // Mustahil ada duplicate key lagi meskipun ID dari backend kembar/undefined.
           keyExtractor={(item, index) => `prod-${item.product_id || item.id || 'x'}-${index}`}
-          contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.sm }}
-          ListEmptyComponent={
-            <Text style={{ color: COLORS.textMuted, textAlign: "center", marginTop: 20 }}>
-              {searchQuery ? "Produk tidak ditemukan." : "Belum ada produk."}
-            </Text>
-          }
+          contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.sm, paddingBottom: 80 }}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
           renderItem={({ item }) => (
             <Pressable
               style={styles.card}
@@ -116,6 +136,7 @@ const styles = StyleSheet.create({
   addButton: { backgroundColor: COLORS.primary, borderRadius: RADIUS.full, width: 36, height: 36, alignItems: "center", justifyContent: "center" },
   searchBox: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: SPACING.lg, marginBottom: SPACING.sm, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: 14 },
   searchInput: { flex: 1, backgroundColor: "transparent", borderWidth: 0, padding: 10, color: COLORS.text },
+  clearButton: { padding: 4 },
   card: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.sm, ...CARD_SHADOW },
   cardImage: { width: 50, height: 50, borderRadius: RADIUS.sm },
   cardBrand: { color: COLORS.textMuted, fontSize: 10 },

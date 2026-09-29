@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, StatusBar, Platform, Modal } from "react-native";
+import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, StatusBar, Platform, Modal, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
@@ -11,6 +11,14 @@ import AppTextInput from "../../components/AppTextInput";
 function formatRupiah(amount) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount || 0);
 }
+
+const formatDateInput = (text) => {
+  const cleaned = text.replace(/[^0-9]/g, "");
+  let formatted = cleaned;
+  if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+  if (cleaned.length > 4) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
+  return formatted;
+};
 
 const STATUS_TABS = [
   { value: "", label: "Semua" },
@@ -36,10 +44,9 @@ const STATUS_COLORS = {
   processing: "#4A90D9",
   shipped: "#8B5CF6",
   delivered: "#3DBA6C",
-  cancelled: COLORS.primary, // Merah
+  cancelled: COLORS.primary, 
 };
 
-// Ambil sekaligus dalam jumlah besar agar filter waktu akurat lintas semua data
 const FETCH_LIMIT = 500;
 
 export default function AdminOrderListScreen({ navigation }) {
@@ -50,6 +57,9 @@ export default function AdminOrderListScreen({ navigation }) {
   const [customEnd, setCustomEnd] = useState("");
   const [isTimeModalVisible, setTimeModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // State Pull-to-Refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const insets = useSafeAreaInsets();
   const safeTopPadding = insets.top > 0 ? insets.top : (Platform.OS === "android" ? StatusBar.currentHeight : 44);
@@ -71,9 +81,15 @@ export default function AdminOrderListScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       loadOrders(statusFilter);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [statusFilter])
   );
+
+  // Handler Pull-to-Refresh
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await loadOrders(statusFilter);
+    setIsRefreshing(false);
+  };
 
   const filteredOrdersByTime = orders.filter((order) => {
     const orderDateStr = order.created_at || order.createdAt;
@@ -86,9 +102,11 @@ export default function AdminOrderListScreen({ navigation }) {
     if (timeFilter === "week") return (now - orderDate) / (1000 * 60 * 60 * 24) <= 7;
     if (timeFilter === "month") return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
     if (timeFilter === "custom") {
-      if (!customStart || !customEnd) return true;
-      const start = new Date(customStart + "T00:00:00");
-      const end = new Date(customEnd + "T23:59:59");
+      if (customStart.length !== 10 || customEnd.length !== 10) return true;
+      const [sDay, sMonth, sYear] = customStart.split("/");
+      const [eDay, eMonth, eYear] = customEnd.split("/");
+      const start = new Date(`${sYear}-${sMonth}-${sDay}T00:00:00`);
+      const end = new Date(`${eYear}-${eMonth}-${eDay}T23:59:59`);
       return orderDate >= start && orderDate <= end;
     }
     return true;
@@ -149,12 +167,11 @@ export default function AdminOrderListScreen({ navigation }) {
         <FlatList
           data={filteredOrdersByTime}
           keyExtractor={(item) => String(item.order_id)}
-          contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.sm }}
+          contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.sm, flexGrow: 1 }}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
           ListEmptyComponent={<Text style={styles.emptyText}>Tidak ada pesanan untuk filter ini.</Text>}
           renderItem={({ item }) => {
-            // Perlindungan/fallback untuk mendapatkan nama customer dengan aman
             const customerName = item.user?.full_name || item.user?.name || item.full_name || item.customer_name || "Customer";
-
             return (
               <Pressable style={styles.card} onPress={() => navigation.navigate("AdminOrderDetail", { order: item })}>
                 <View style={styles.cardTopRow}>
@@ -165,12 +182,7 @@ export default function AdminOrderListScreen({ navigation }) {
                     </Text>
                   </View>
                 </View>
-                
-                {/* Baris Nama Customer */}
-                <Text style={styles.customerName} numberOfLines={1}>
-                  {customerName}
-                </Text>
-                
+                <Text style={styles.customerName} numberOfLines={1}>{customerName}</Text>
                 <Text style={styles.itemCount}>{item.items?.length || 0} produk</Text>
                 <Text style={styles.total}>{formatRupiah(item.total_price)}</Text>
               </Pressable>
@@ -179,30 +191,37 @@ export default function AdminOrderListScreen({ navigation }) {
         />
       )}
 
-      {/* Modal Filter Waktu */}
       <Modal visible={isTimeModalVisible} animationType="fade" transparent>
         <Pressable style={styles.modalOverlay} onPress={() => setTimeModalVisible(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Filter Berdasarkan Waktu</Text>
             {TIME_FILTERS.map((opt) => (
-              <Pressable
-                key={opt.value}
-                style={styles.timeOptionRow}
-                onPress={() => setTimeFilter(opt.value)}
-              >
-                <Text style={[styles.timeOptionText, timeFilter === opt.value && styles.timeOptionTextActive]}>
-                  {opt.label}
-                </Text>
+              <Pressable key={opt.value} style={styles.timeOptionRow} onPress={() => setTimeFilter(opt.value)}>
+                <Text style={[styles.timeOptionText, timeFilter === opt.value && styles.timeOptionTextActive]}>{opt.label}</Text>
                 {timeFilter === opt.value && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
               </Pressable>
             ))}
 
             {timeFilter === "custom" && (
               <View style={{ marginTop: SPACING.sm, gap: 8 }}>
-                <Text style={styles.modalLabel}>Dari Tanggal (YYYY-MM-DD)</Text>
-                <AppTextInput style={styles.dateInput} value={customStart} onChangeText={setCustomStart} placeholder="2026-09-01" />
-                <Text style={styles.modalLabel}>Sampai Tanggal (YYYY-MM-DD)</Text>
-                <AppTextInput style={styles.dateInput} value={customEnd} onChangeText={setCustomEnd} placeholder="2026-09-30" />
+                <Text style={styles.modalLabel}>Dari Tanggal (DD/MM/YYYY)</Text>
+                <AppTextInput 
+                  style={styles.dateInput} 
+                  value={customStart} 
+                  onChangeText={(text) => setCustomStart(formatDateInput(text))} 
+                  placeholder="01/09/2026" 
+                  keyboardType="number-pad"
+                  maxLength={10}
+                />
+                <Text style={styles.modalLabel}>Sampai Tanggal (DD/MM/YYYY)</Text>
+                <AppTextInput 
+                  style={styles.dateInput} 
+                  value={customEnd} 
+                  onChangeText={(text) => setCustomEnd(formatDateInput(text))} 
+                  placeholder="30/09/2026" 
+                  keyboardType="number-pad"
+                  maxLength={10}
+                />
               </View>
             )}
 
@@ -235,9 +254,7 @@ const styles = StyleSheet.create({
   statusBadge: { borderRadius: RADIUS.full, height: 22, paddingHorizontal: 10, justifyContent: "center", alignItems: "center" },
   statusBadgeText: { fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
   
-  // Style untuk Nama Customer di Card
   customerName: { color: COLORS.textMuted, fontSize: 12, marginTop: 8 },
-  
   itemCount: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
   total: { color: COLORS.primary, fontWeight: "700", fontSize: 14, marginTop: 4 },
   

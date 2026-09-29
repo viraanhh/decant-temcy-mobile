@@ -10,6 +10,7 @@ import { useWishlist } from "../context/WishlistContext";
 import ProductImage from "../components/ProductImage";
 import * as Clipboard from "expo-clipboard";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics"; // <-- IMPORT HAPTICS
 
 function formatRupiah(amount) {
   return new Intl.NumberFormat("id-ID", {
@@ -36,7 +37,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   const [product, setProduct] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
-  const [quantity, setQuantity] = useState(1); // State baru untuk quantity
+  const [quantity, setQuantity] = useState(1);
   const [reviews, setReviews] = useState([]);
   const [avgRating, setAvgRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
@@ -110,7 +111,6 @@ export default function ProductDetailScreen({ route, navigation }) {
   };
 
   const handleShare = async () => {
-    // 🔴 Placeholder domain — sesuaikan kalau website punya deep link/URL produk resmi
     const link = `https://decanttemcy.com/product/${product.id}`;
     await Clipboard.setStringAsync(link);
     showCartMessage("Link produk disalin ke clipboard");
@@ -143,7 +143,6 @@ export default function ProductDetailScreen({ route, navigation }) {
       setIsAdding(true);
       setCartMessage("");
 
-      // Kirim quantity ke keranjang
       const result = await addToCart(product, selectedVariant, quantity);
 
       if (!result?.success) {
@@ -152,6 +151,8 @@ export default function ProductDetailScreen({ route, navigation }) {
       }
 
       setJustAdded(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); // <-- TAMBAHKAN GETARAN SUKSES
+
       if (result.message) showCartMessage(result.message);
       setTimeout(() => setJustAdded(false), 1500);
     } catch (error) {
@@ -225,7 +226,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 key={variant.size_ml}
                 onPress={() => {
                   setSelectedVariant(variant);
-                  setQuantity(1); // Reset quantity ketika ganti ukuran
+                  setQuantity(1);
                 }}
                 disabled={!variant.in_stock}
                 style={[
@@ -259,7 +260,6 @@ export default function ProductDetailScreen({ route, navigation }) {
           </>
         )}
 
-        {/* UI Quantity */}
         <Text style={styles.sectionTitle}>Jumlah</Text>
         <View style={styles.qtyRow}>
           <Pressable
@@ -305,7 +305,6 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* NOTES & PROS/CONS */}
         {(product.top_notes || product.middle_notes || product.base_notes) && (
           <>
             <Text style={styles.sectionTitle}>Notes</Text>
@@ -366,7 +365,6 @@ export default function ProductDetailScreen({ route, navigation }) {
           </View>
         )}
 
-        {/* Produk Serupa */}
         {similarProducts.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>Produk Serupa</Text>
@@ -386,7 +384,6 @@ export default function ProductDetailScreen({ route, navigation }) {
           </>
         )}
 
-        {/* Reviews */}
         <Text style={styles.sectionTitle}>Ulasan Pembeli ({reviews.length})</Text>
 
         {reviews.length === 0 ? (

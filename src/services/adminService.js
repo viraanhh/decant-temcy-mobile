@@ -147,3 +147,33 @@ export async function updateTracking(data) {
   const response = await apiClient.post("/tracking", data);
   return response.data;
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// VOUCHER
+// Base path beda dari modul admin lain: /api/vouchers/admin (bukan /api/admin/...)
+// ─────────────────────────────────────────────────────────────────────────
+
+// GET /api/vouchers/admin -> { vouchers: [...] }
+export async function getAdminVouchers() {
+  const response = await apiClient.get("/vouchers/admin");
+  return response.data.vouchers;
+}
+
+// POST /api/vouchers/admin
+// Body: { code, type, value, min_purchase, max_discount, quota, expired_at, is_active }
+// code akan otomatis di-uppercase oleh backend.
+export async function createAdminVoucher(fields) {
+  const response = await apiClient.post("/vouchers/admin", fields);
+  return response.data.voucher;
+}
+
+export async function updateAdminVoucher(id, fields) {
+  const response = await apiClient.put(`/vouchers/admin/${id}`, fields);
+  return response.data.voucher;
+}
+
+// HARD DELETE — beda dari produk (soft delete), voucher benar-benar hilang.
+export async function deleteAdminVoucher(id) {
+  const response = await apiClient.delete(`/vouchers/admin/${id}`);
+  return response.data;
+}

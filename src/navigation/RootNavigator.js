@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { COLORS } from "../constants/colors";
+import { useAuth } from "../context/AuthContext"; // FIX: Import useAuth
 
 import BottomTabNavigator from "./BottomTabNavigator";
 import LoginScreen from "../screens/LoginScreen";
@@ -25,13 +26,24 @@ import AdminTabNavigator from "./AdminTabNavigator";
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
+  // FIX: Ambil data user dan status loading dari AuthContext
+  const { user, isLoading } = useAuth();
+
+  // Cegah render navigasi sebelum status login/sesi selesai dipastikan
+  if (isLoading) return null; 
+
+  // FIX: Tentukan route awal secara dinamis berdasarkan role
+  const initialRouteName = user?.role === "admin" ? "AdminTabs" : "MainTabs";
+
   return (
     <Stack.Navigator
+      initialRouteName={initialRouteName} // FIX: Terapkan initialRouteName dinamis
       screenOptions={{
         headerStyle: { backgroundColor: COLORS.surface },
         headerTintColor: COLORS.text,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: COLORS.background },
+        animation: "slide_from_right", // <-- DITAMBAHKAN
       }}
     >
       <Stack.Screen name="MainTabs" component={BottomTabNavigator} options={{ headerShown: false }} />

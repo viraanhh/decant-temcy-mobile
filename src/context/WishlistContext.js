@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 import * as wishlistService from "../services/wishlistService";
+import * as Haptics from "expo-haptics"; // <-- IMPORT HAPTICS
 
 const WishlistContext = createContext(null);
 
@@ -22,7 +23,6 @@ export function WishlistProvider({ children }) {
       .finally(() => setIsLoading(false));
   }, [user]);
 
-  // Fetch ulang tiap kali status login berubah (login/logout/ganti akun)
   useEffect(() => {
     refresh();
   }, [refresh]);
@@ -31,9 +31,10 @@ export function WishlistProvider({ children }) {
   const isWishlisted = (productId) => wishlistIds.includes(productId);
 
   const toggleWishlist = async (productId) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // <-- TAMBAHKAN GETARAN RINGAN
+
     const wasWishlisted = isWishlisted(productId);
 
-    // Optimistic update dulu supaya ikon ❤️ langsung berubah tanpa nunggu network
     if (wasWishlisted) {
       setFavorites((prev) => prev.filter((f) => f.productId !== productId));
     } else {
@@ -42,11 +43,8 @@ export function WishlistProvider({ children }) {
 
     try {
       await wishlistService.toggleFavorite(productId);
-      // Refresh penuh supaya WishlistScreen dapat data produk lengkap
-      // (bukan cuma id) untuk item yang baru ditambahkan.
       refresh();
     } catch (err) {
-      // Gagal → batalkan optimistic update, sinkron ulang ke kondisi asli server
       refresh();
     }
   };

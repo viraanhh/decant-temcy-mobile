@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
@@ -130,6 +130,9 @@ export default function CatalogScreen({ navigation, route }) {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // State Pull-to-Refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [searchInput, setSearchInput] = useState(route?.params?.search || "");
   const [filters, setFilters] = useState({
@@ -139,11 +142,6 @@ export default function CatalogScreen({ navigation, route }) {
     sort: "",
   });
 
-  // PENTING: CatalogScreen ini SEBUAH TAB — kalau sudah pernah dibuka,
-  // navigate() ulang ke sini TIDAK remount komponennya, jadi params baru
-  // tidak pernah kebaca kalau cuma diambil lewat useState() awal saja.
-  // useEffect ini yang membuat filter benar-benar ikut ter-update tiap
-  // kali datang dari Home dengan kategori/gender berbeda.
   useEffect(() => {
     if (route?.params?.search !== undefined) {
       setSearchInput(route.params.search);
@@ -188,27 +186,27 @@ export default function CatalogScreen({ navigation, route }) {
     }
   };
 
+  // Handler Pull-to-Refresh
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await loadPage(1);
+    setIsRefreshing(false);
+  };
+
   const handleChangePage = (newPage) => {
     if (newPage < 1 || newPage > totalPages || newPage === page || isLoading) return;
     loadPage(newPage);
   };
 
   const updateFilter = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
-
-  // Chip kategori/aroma "nempel" ke kolom search yang sama (backend cuma
-  // punya satu parameter `search`, bukan field kategori terpisah) — jadi
-  // pilih chip = isi searchInput dengan nama aromanya.
   const handleCategoryChip = (value) => setSearchInput(value);
-
   const clearFilters = () => {
     setSearchInput("");
     setFilters({ search: "", gender: "", concentration: "", sort: "" });
   };
 
   const hasActiveFilters = filters.search || filters.gender || filters.concentration || filters.sort;
-
-  const displayData =
-    products.length % 2 !== 0 ? [...products, { id: "__placeholder__", isPlaceholder: true }] : products;
+  const displayData = products.length % 2 !== 0 ? [...products, { id: "__placeholder__", isPlaceholder: true }] : products;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -275,6 +273,7 @@ export default function CatalogScreen({ navigation, route }) {
           columnWrapperStyle={{ gap: SPACING.md }}
           contentContainerStyle={{ gap: SPACING.md, padding: SPACING.lg, paddingTop: SPACING.sm }}
           keyboardDismissMode="on-drag"
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
           renderItem={({ item }) =>
             item.isPlaceholder ? (
               <View style={[styles.card, { backgroundColor: "transparent", borderWidth: 0 }]} />

@@ -4,6 +4,10 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 
+// Import Hooks
+import { useCart } from "../context/CartContext";
+
+// Import Screens
 import HomeScreen from "../screens/HomeScreen";
 import CatalogScreen from "../screens/CatalogScreen";
 import CameraSearchScreen from "../screens/CameraSearchScreen";
@@ -30,6 +34,8 @@ function FloatingChatButton() {
 }
 
 export default function BottomTabNavigator() {
+  const { totalItems } = useCart(); // Ambil total items dari context
+
   return (
     <View style={{ flex: 1 }}>
       <Tab.Navigator
@@ -50,7 +56,14 @@ export default function BottomTabNavigator() {
         <Tab.Screen name="Beranda" component={HomeScreen} />
         <Tab.Screen name="Katalog" component={CatalogScreen} />
         <Tab.Screen name="Foto" component={CameraSearchScreen} />
-        <Tab.Screen name="Keranjang" component={CartScreen} />
+        
+        {/* FIX: Tab Keranjang dengan Badge Jumlah Item */}
+        <Tab.Screen 
+          name="Keranjang" 
+          component={CartScreen} 
+          options={{ tabBarBadge: totalItems > 0 ? totalItems : undefined }}
+        />
+        
         <Tab.Screen name="Profil" component={ProfileScreen} />
       </Tab.Navigator>
       <FloatingChatButton />

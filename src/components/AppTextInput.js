@@ -8,18 +8,30 @@ export default function AppTextInput({ style, ...props }) {
   return (
     <TextInput
       {...props}
-      onFocus={(e) => { setIsFocused(true); props.onFocus?.(e); }}
-      onBlur={(e) => { setIsFocused(false); props.onBlur?.(e); }}
+      onFocus={(e) => {
+        setIsFocused(true);
+        props.onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setIsFocused(false);
+        props.onBlur?.(e);
+      }}
       placeholderTextColor={COLORS.textFaint}
-      // PENTING: `style` dari pemanggil ditaruh SEBELUM inputFocused,
-      // supaya borderColor fokus tidak ketiban style default (borderColor: COLORS.border)
-      // yang dikirim tiap screen lewat prop `style`.
       style={[styles.input, style, isFocused && styles.inputFocused]}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  input: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, color: COLORS.text },
-  inputFocused: { borderColor: COLORS.primary },
+  input: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    padding: 12,
+    color: COLORS.text,
+  },
+  inputFocused: {
+    borderColor: COLORS.primary,
+  },
 });

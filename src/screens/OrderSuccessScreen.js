@@ -1,12 +1,18 @@
 import { useState, useEffect } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { COLORS } from "../constants/colors";
+import * as Haptics from "expo-haptics"; // <-- IMPORT HAPTICS
 
 export default function OrderSuccessScreen({ route, navigation }) {
   const { order } = route.params;
   const [countdown, setCountdown] = useState(8);
 
   const goHome = () => navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+
+  // Getar sukses sekali saat screen ini terbuka
+  useEffect(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, []);
 
   useEffect(() => {
     if (countdown <= 0) {

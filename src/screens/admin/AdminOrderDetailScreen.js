@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { View, Text, ScrollView, Pressable, StyleSheet, ActivityIndicator, Modal, Platform } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { SPACING, RADIUS, CARD_SHADOW } from "../../constants/theme";
 import { updateOrderStatus, updateTracking } from "../../services/adminService";
 import AppTextInput from "../../components/AppTextInput";
 import useKeyboardHeight from "../../hooks/useKeyboardHeight";
+import * as Haptics from "expo-haptics"; // <-- IMPORT HAPTICS
 
 function formatRupiah(amount) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount || 0);
@@ -52,10 +52,22 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
     setIsUpdating(true);
     try {
       const result = await updateOrderStatus(order.order_id, newStatus);
-      const updatedOrder = result.order || result;
-      setOrder(updatedOrder);
-      setSelectedStatus(updatedOrder.status);
-      navigation.setParams({ order: updatedOrder });
+      const apiUpdatedOrder = result.order || result;
+      
+      const fullyMergedOrder = {
+        ...order,         
+        ...apiUpdatedOrder, 
+        status: newStatus,  
+        paid_at: (order.status === "pending" && newStatus === "paid" && !apiUpdatedOrder.paid_at) 
+                 ? new Date().toISOString() 
+                 : (apiUpdatedOrder.paid_at || order.paid_at)
+      };
+
+      setOrder(fullyMergedOrder);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); // <-- TAMBAHKAN GETARAN SUKSES
+
+      setSelectedStatus(fullyMergedOrder.status);
+      navigation.setParams({ order: fullyMergedOrder });
     } catch (err) {
       showConfirmModal("error", "Gagal", err?.response?.data?.message || "Gagal mengubah status pesanan.", null);
     } finally {
@@ -126,7 +138,7 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
   const customerEmail = order.user?.email || "-";
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <View style={styles.container}> 
       <ScrollView contentContainerStyle={{ padding: SPACING.lg }}>
         <View style={styles.section}>
           <View style={styles.headerRow}>
@@ -136,6 +148,12 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
             </View>
           </View>
           <Text style={styles.total}>{formatRupiah(order.total_price)}</Text>
+          
+          {order.paid_at && (
+            <Text style={styles.paidInfo}>
+              Dibayar via {order.payment_method || "Midtrans"} · {new Date(order.paid_at).toLocaleString("id-ID")}
+            </Text>
+          )}
         </View>
 
         <Text style={styles.sectionTitle}>Pelanggan</Text>
@@ -166,12 +184,12 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
           <View style={styles.statusStepList}>
             {STATUS_FLOW.map((s, i) => {
               const isSelected = s.value === selectedStatus;
-              const isCompletedStep = (currentIndex >= 0 && i < currentIndex) || (order.status === "delivered" && s.value === "delivered");
-              const isCurrentStep = s.value === order.status && !isCompletedStep;
+              const isCompletedStep = (currentIndex >= 0 && i < currentIndex) || order.status === "delivered";
+              const isCurrentStep = s.value === order.status && (!isCompletedStep || order.status === "delivered");
 
               let IconComponent;
-              if (isCompletedStep && !isSelected) {
-                IconComponent = <Ionicons name="checkmark-circle" size={20} color="#3DBA6C" />;
+              if (isCompletedStep && (!isSelected || order.status === "delivered")) {
+                 IconComponent = <Ionicons name="checkmark-circle" size={20} color="#3DBA6C" />;
               } else if (isSelected) {
                 IconComponent = <Ionicons name="radio-button-on" size={20} color={COLORS.text} />;
               } else {
@@ -183,9 +201,9 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
                   key={s.value}
                   style={[
                     styles.statusStepButton,
-                    isCurrentStep && styles.statusStepButtonCurrent,
-                    isSelected && styles.statusStepButtonSelected,
-                    isCompletedStep && !isSelected && styles.statusStepButtonPast,
+                    isCurrentStep && order.status !== "delivered" && styles.statusStepButtonCurrent,
+                    isSelected && order.status !== "delivered" && styles.statusStepButtonSelected,
+                    isCompletedStep && (!isSelected || order.status === "delivered") && styles.statusStepButtonPast,
                   ]}
                   onPress={() => setSelectedStatus(s.value)}
                   disabled={isUpdating || order.status === "cancelled"}
@@ -195,9 +213,9 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
                   </View>
                   <Text style={[
                     styles.statusStepText,
-                    isCurrentStep && styles.statusStepTextCurrent,
-                    isSelected && styles.statusStepTextSelected,
-                    isCompletedStep && !isSelected && styles.statusStepTextPast
+                    isCurrentStep && order.status !== "delivered" && styles.statusStepTextCurrent,
+                    isSelected && order.status !== "delivered" && styles.statusStepTextSelected,
+                    isCompletedStep && (!isSelected || order.status === "delivered") && styles.statusStepTextPast
                   ]}>
                     {s.label}
                   </Text>
@@ -319,7 +337,7 @@ export default function AdminOrderDetailScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -331,6 +349,9 @@ const styles = StyleSheet.create({
   currentStatusBadge: { backgroundColor: `${COLORS.primary}20`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.full },
   currentStatusText: { color: COLORS.primary, fontSize: 10, fontWeight: "700", textTransform: "uppercase" },
   total: { color: COLORS.text, fontSize: 20, fontWeight: "700", marginTop: 8 },
+  
+  paidInfo: { color: "#3DBA6C", fontSize: 11, marginTop: 6 }, 
+  
   sectionTitle: { color: COLORS.textMuted, fontSize: 12, textTransform: "uppercase", marginBottom: SPACING.sm },
 
   customerRow: { flexDirection: "row", alignItems: "center", gap: 12 },

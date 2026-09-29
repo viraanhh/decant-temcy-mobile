@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { View, Text, ScrollView, FlatList, Pressable, StyleSheet, ActivityIndicator, Animated, Easing } from "react-native";
+import { View, Text, ScrollView, FlatList, Pressable, StyleSheet, ActivityIndicator, Animated, Easing, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -30,14 +30,13 @@ const CATEGORIES = [
 
 function BrandMarquee() {
   const scrollX = useRef(new Animated.Value(0)).current;
-  const animationRef = useRef(null); // Menyimpan instance animasi
-  const isFocused = useIsFocused();  // Mengecek apakah tab sedang aktif
-  const itemWidth = 160; // perkiraan lebar tiap brand + spasi
+  const animationRef = useRef(null); 
+  const isFocused = useIsFocused();  
+  const itemWidth = 160; 
 
   useEffect(() => {
     const totalWidth = itemWidth * MARQUEE_BRANDS.length;
 
-    // 1. Inisialisasi animasi hanya sekali agar tidak mereset posisi scroll
     if (!animationRef.current) {
       animationRef.current = Animated.loop(
         Animated.timing(scrollX, {
@@ -49,14 +48,12 @@ function BrandMarquee() {
       );
     }
 
-    // 2. Play / Pause berdasarkan status fokus tab
     if (isFocused) {
       animationRef.current.start();
     } else {
       animationRef.current.stop();
     }
 
-    // 3. Cleanup: Hentikan animasi saat komponen benar-benar di-unmount
     return () => {
       if (animationRef.current) {
         animationRef.current.stop();
@@ -100,26 +97,43 @@ export default function HomeScreen({ navigation }) {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [recommendations, setRecommendations] = useState([]);
+  
+  // State Pull-to-Refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     getProducts({ page: 1, limit: 20 })
-      .then((result) => {
-        setProducts(result.products);
-      })
-      .catch(() => {
-        setProducts([]);
-      })
+      .then((result) => setProducts(result.products))
+      .catch(() => setProducts([]))
       .finally(() => setIsLoading(false));
 
     getHomeRecommendations(!!user).then(setRecommendations);
   }, [user]);
 
+  // Handler Pull-to-Refresh
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        getProducts({ page: 1, limit: 20 }).then((r) => setProducts(r.products)),
+        getHomeRecommendations(!!user).then(setRecommendations),
+      ]);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const goToDetail = (id) => navigation.navigate("ProductDetail", { productId: id });
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScrollView keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
-        {/* Greeting */}
+      <ScrollView 
+        keyboardDismissMode="on-drag" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
+      >
         <View style={styles.header}>
           <View style={styles.headerRow}>
             <View>
@@ -131,7 +145,6 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Banner */}
         <LinearGradient
           colors={[COLORS.primary, COLORS.primaryDark]}
           start={{ x: 0, y: 0 }}

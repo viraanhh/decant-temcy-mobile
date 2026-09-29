@@ -14,6 +14,7 @@ export default function CheckoutNavigator() {
         headerTintColor: COLORS.text,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: COLORS.background },
+        animation: "slide_from_right", // <-- DITAMBAHKAN
       }}
     >
       <Stack.Screen name="CheckoutAddress" component={CheckoutAddressScreen} options={{ title: "Alamat" }} />

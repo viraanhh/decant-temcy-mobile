@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, ScrollView, Pressable, StyleSheet, ActivityIndicator, RefreshControl } from "react-native";
 import { COLORS } from "../constants/colors";
 import { getMyOrders, ORDER_STATUS_LABEL } from "../services/orderService";
 
@@ -21,12 +21,11 @@ const FILTER_OPTIONS = [
   { value: "delivered", label: "Selesai" },
 ];
 
-// Pemetaan warna khusus untuk tombol filter navbar
 const TAB_COLORS = {
   "": COLORS.primary,
-  "pending": "#E8A33D", // Kuning/Oranye
-  "active": "#4A90D9",  // Biru
-  "delivered": "#3DBA6C", // Hijau
+  "pending": "#E8A33D", 
+  "active": "#4A90D9",  
+  "delivered": "#3DBA6C", 
 };
 
 export default function OrderHistoryScreen({ navigation }) {
@@ -34,6 +33,9 @@ export default function OrderHistoryScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  
+  // State Pull-to-Refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -45,6 +47,20 @@ export default function OrderHistoryScreen({ navigation }) {
         .finally(() => setIsLoading(false));
     }, [])
   );
+
+  // Handler Pull-to-Refresh
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const data = await getMyOrders();
+      setOrders(data);
+      setError("");
+    } catch (err) {
+      setError("Gagal memuat riwayat pesanan");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const displayedOrders = filterStatus
     ? orders.filter((o) => FILTER_GROUPS[filterStatus]?.includes(o.status))
@@ -87,18 +103,22 @@ export default function OrderHistoryScreen({ navigation }) {
 
   if (error) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={{ color: COLORS.textMuted }}>{error}</Text>
-      </View>
+      <ScrollView contentContainerStyle={{ flex: 1 }} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}>
+        <View style={styles.centerContainer}>
+          <Text style={{ color: COLORS.textMuted }}>{error}</Text>
+        </View>
+      </ScrollView>
     );
   }
 
   if (orders.length === 0) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={{ fontSize: 40 }}>📦</Text>
-        <Text style={styles.emptyTitle}>Belum Ada Pesanan</Text>
-      </View>
+      <ScrollView contentContainerStyle={{ flex: 1 }} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}>
+        <View style={styles.centerContainer}>
+          <Text style={{ fontSize: 40 }}>📦</Text>
+          <Text style={styles.emptyTitle}>Belum Ada Pesanan</Text>
+        </View>
+      </ScrollView>
     );
   }
 
@@ -108,14 +128,17 @@ export default function OrderHistoryScreen({ navigation }) {
       {FilterRow}
 
       {displayedOrders.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Text style={{ color: COLORS.textMuted }}>Tidak ada pesanan dengan status ini.</Text>
-        </View>
+        <ScrollView contentContainerStyle={{ flex: 1 }} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}>
+          <View style={styles.centerContainer}>
+            <Text style={{ color: COLORS.textMuted }}>Tidak ada pesanan dengan status ini.</Text>
+          </View>
+        </ScrollView>
       ) : (
         <FlatList
           data={displayedOrders}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={{ padding: 16, gap: 10, paddingTop: 4 }}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
           renderItem={({ item }) => {
             const status = ORDER_STATUS_LABEL[item.status] || { text: item.status, color: "textMuted" };
             const statusColor = COLORS[status.color] || COLORS.textMuted;

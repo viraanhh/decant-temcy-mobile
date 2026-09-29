@@ -1,10 +1,11 @@
 import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { SPACING, RADIUS, CARD_SHADOW } from "../../constants/theme";
 import { getDashboardStats } from "../../services/adminService";
+import { getAllProducts } from "../../services/productService";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 function formatRupiah(amount) {
@@ -18,7 +19,6 @@ const STAT_CARDS = [
   { key: "totalRevenue", label: "Pendapatan", icon: "cash-outline", isCurrency: true },
 ];
 
-// Kamus label status agar sama persis dengan AdminOrderListScreen
 const STATUS_LABELS = {
   pending: "Menunggu",
   paid: "Dibayar",
@@ -28,7 +28,6 @@ const STATUS_LABELS = {
   cancelled: "Dibatalkan",
 };
 
-// Kamus warna status agar konsisten
 const STATUS_COLORS = {
   pending: "#E8A33D",
   paid: "#4A90D9",
@@ -38,15 +37,76 @@ const STATUS_COLORS = {
   cancelled: COLORS.primary,
 };
 
+const LOW_STOCK_THRESHOLD = 20;
+
 export default function AdminDashboardScreen({ navigation }) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [lowStockProducts, setLowStockProducts] = useState([]);
+  const [isAlertVisible, setIsAlertVisible] = useState(true);
+  
+  // State Pull-to-Refresh
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      getDashboardStats().then(setData).finally(() => setIsLoading(false));
+      setIsLoading(true);
+      setIsAlertVisible(true);
+      
+      getDashboardStats()
+        .then(setData)
+        .finally(() => setIsLoading(false));
+
+      getAllProducts()
+        .then((products) => {
+          const lowStock = products.filter((p) => {
+            const currentStock = p.stock_ml !== undefined ? p.stock_ml : p.stock; 
+            if (currentStock === undefined || currentStock === null) return false;
+            return currentStock <= LOW_STOCK_THRESHOLD;
+          });
+          setLowStockProducts(lowStock);
+        })
+        .catch((err) => {
+          console.error("Gagal mengambil data produk untuk alert stok:", err);
+        });
     }, [])
   );
+
+  // Handler Pull-to-Refresh
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    setIsAlertVisible(true); // Kembalikan notifikasi jika sempat di-close
+    try {
+      const [statsData, productsData] = await Promise.all([
+        getDashboardStats(),
+        getAllProducts()
+      ]);
+      
+      setData(statsData);
+      
+      const lowStock = productsData.filter((p) => {
+        const currentStock = p.stock_ml !== undefined ? p.stock_ml : p.stock; 
+        if (currentStock === undefined || currentStock === null) return false;
+        return currentStock <= LOW_STOCK_THRESHOLD;
+      });
+      setLowStockProducts(lowStock);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleAlertClick = () => {
+    if (lowStockProducts.length === 1) {
+      navigation.navigate("Produk", { 
+        screen: "AdminProductForm", 
+        params: { product: lowStockProducts[0] } 
+      });
+    } else {
+      navigation.navigate("Produk");
+    }
+  };
 
   if (isLoading || !data) {
     return (
@@ -58,7 +118,32 @@ export default function AdminDashboardScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <ScrollView contentContainerStyle={{ padding: SPACING.lg }}>
+      <ScrollView 
+        contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
+      >
+        {lowStockProducts.length > 0 && isAlertVisible && (
+          <Pressable 
+            style={({ pressed }) => [styles.alertBanner, pressed && { opacity: 0.8 }]} 
+            onPress={handleAlertClick}
+          >
+            <Ionicons name="warning" size={20} color={COLORS.warning} style={{ marginTop: 2 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.alertTitle}>{lowStockProducts.length} produk stok menipis</Text>
+              <Text style={styles.alertText} numberOfLines={2}>
+                {lowStockProducts.map((p) => p.product_name).join(", ")}
+              </Text>
+            </View>
+            <Pressable 
+              onPress={() => setIsAlertVisible(false)} 
+              style={styles.closeAlertBtn}
+              hitSlop={15}
+            >
+              <Ionicons name="close" size={20} color={COLORS.warning} />
+            </Pressable>
+          </Pressable>
+        )}
+
         <Text style={styles.title}>Dashboard Admin</Text>
 
         <View style={styles.statGrid}>
@@ -115,6 +200,22 @@ export default function AdminDashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   centerContainer: { flex: 1, backgroundColor: COLORS.background, alignItems: "center", justifyContent: "center" },
+  
+  alertBanner: { 
+    flexDirection: "row", 
+    alignItems: "flex-start",
+    gap: 12, 
+    backgroundColor: `${COLORS.warning}15`, 
+    borderWidth: 1, 
+    borderColor: COLORS.warning, 
+    borderRadius: RADIUS.md, 
+    padding: SPACING.md, 
+    marginBottom: SPACING.lg 
+  },
+  alertTitle: { color: COLORS.warning, fontWeight: "700", fontSize: 13 },
+  alertText: { color: COLORS.textMuted, fontSize: 11, marginTop: 4, lineHeight: 16 },
+  closeAlertBtn: { padding: 2, marginLeft: 4 },
+  
   title: { color: COLORS.text, fontSize: 22, fontWeight: "700", marginBottom: SPACING.lg },
   statGrid: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.md },
   statCard: { width: "47%", backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md, ...CARD_SHADOW },
