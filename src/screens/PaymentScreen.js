@@ -41,10 +41,6 @@ export default function PaymentScreen({ route, navigation }) {
     }
   };
 
-  // Polling status order tiap beberapa detik selagi WebView terbuka.
-  // Ini yang menggantikan callback onSuccess/onPending milik Snap.js di web
-  // (React Native tidak punya akses ke callback JS itu, karena WebView
-  // cuma "menampilkan" halaman, bukan menjalankan script sebagai bagian app).
   const startPolling = () => {
     pollRef.current = setInterval(async () => {
       try {
@@ -54,8 +50,6 @@ export default function PaymentScreen({ route, navigation }) {
           navigation.replace("OrderSuccess", { order });
         }
       } catch (err) {
-        // Diamkan dulu kalau satu kali polling gagal (mis. koneksi lag),
-        // biar tidak mengganggu WebView yang sedang aktif.
       }
     }, POLL_INTERVAL_MS);
   };

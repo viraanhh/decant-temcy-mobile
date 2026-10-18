@@ -42,10 +42,9 @@ const LOW_STOCK_THRESHOLD = 20;
 export default function AdminDashboardScreen({ navigation }) {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [lowStockProducts, setLowStockProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [isAlertVisible, setIsAlertVisible] = useState(true);
   
-  // State Pull-to-Refresh
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useFocusEffect(
@@ -58,24 +57,16 @@ export default function AdminDashboardScreen({ navigation }) {
         .finally(() => setIsLoading(false));
 
       getAllProducts()
-        .then((products) => {
-          const lowStock = products.filter((p) => {
-            const currentStock = p.stock_ml !== undefined ? p.stock_ml : p.stock; 
-            if (currentStock === undefined || currentStock === null) return false;
-            return currentStock <= LOW_STOCK_THRESHOLD;
-          });
-          setLowStockProducts(lowStock);
-        })
+        .then(setAllProducts)
         .catch((err) => {
-          console.error("Gagal mengambil data produk untuk alert stok:", err);
+          console.error("Gagal mengambil data produk:", err);
         });
     }, [])
   );
 
-  // Handler Pull-to-Refresh
   const onRefresh = async () => {
     setIsRefreshing(true);
-    setIsAlertVisible(true); // Kembalikan notifikasi jika sempat di-close
+    setIsAlertVisible(true); 
     try {
       const [statsData, productsData] = await Promise.all([
         getDashboardStats(),
@@ -83,19 +74,22 @@ export default function AdminDashboardScreen({ navigation }) {
       ]);
       
       setData(statsData);
-      
-      const lowStock = productsData.filter((p) => {
-        const currentStock = p.stock_ml !== undefined ? p.stock_ml : p.stock; 
-        if (currentStock === undefined || currentStock === null) return false;
-        return currentStock <= LOW_STOCK_THRESHOLD;
-      });
-      setLowStockProducts(lowStock);
+      setAllProducts(productsData);
     } catch (err) {
       console.error(err);
     } finally {
       setIsRefreshing(false);
     }
   };
+
+  const lowStockProducts = allProducts.filter((p) => {
+    const currentStock = p.stock_ml !== undefined ? p.stock_ml : p.stock; 
+    if (currentStock === undefined || currentStock === null) return false;
+    return currentStock <= LOW_STOCK_THRESHOLD;
+  });
+
+  const urgentRestock = lowStockProducts.filter((p) => p.sold_count > 10).sort((a, b) => b.sold_count - a.sold_count).slice(0, 3);
+  const slowMovingProducts = allProducts.filter((p) => p.sold_count === 0);
 
   const handleAlertClick = () => {
     if (lowStockProducts.length === 1) {
@@ -192,6 +186,36 @@ export default function AdminDashboardScreen({ navigation }) {
             </View>
           );
         })}
+
+        {(urgentRestock.length > 0 || slowMovingProducts.length > 0) && (
+          <>
+            <Text style={styles.sectionTitle}>💡 Rekomendasi Bisnis</Text>
+
+            {urgentRestock.map((p) => (
+              <View key={`restock-${p.id}`} style={styles.recommendationCard}>
+                <Ionicons name="trending-up" size={18} color={COLORS.success} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recommendationTitle}>Segera Restock: {p.product_name}</Text>
+                  <Text style={styles.recommendationText}>
+                    Terjual {p.sold_count}x tapi stok tersisa {p.stock_ml}ml — produk laris, berisiko kehabisan.
+                  </Text>
+                </View>
+              </View>
+            ))}
+
+            {slowMovingProducts.length > 0 && (
+              <View style={styles.recommendationCard}>
+                <Ionicons name="trending-down" size={18} color={COLORS.warning} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recommendationTitle}>{slowMovingProducts.length} Produk Belum Pernah Terjual</Text>
+                  <Text style={styles.recommendationText} numberOfLines={3}>
+                    {slowMovingProducts.map((p) => p.product_name).join(", ")} — pertimbangkan promo/diskon atau evaluasi harga.
+                  </Text>
+                </View>
+              </View>
+            )}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -234,4 +258,8 @@ const styles = StyleSheet.create({
   orderBottomRow: { flexDirection: "row", marginTop: 6 },
   statusBadge: { borderRadius: RADIUS.full, height: 20, paddingHorizontal: 8, justifyContent: "center", alignItems: "center" },
   statusBadgeText: { fontSize: 9, fontWeight: "700", textTransform: "uppercase" },
+  
+  recommendationCard: { flexDirection: "row", gap: 10, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md, marginBottom: SPACING.sm, ...CARD_SHADOW },
+  recommendationTitle: { color: COLORS.text, fontWeight: "700", fontSize: 13 },
+  recommendationText: { color: COLORS.textMuted, fontSize: 11, marginTop: 3, lineHeight: 15 },
 });

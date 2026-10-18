@@ -22,7 +22,7 @@ export default function OrderDetailScreen({ route, navigation }) {
   useEffect(() => {
     Promise.all([
       getOrderById(orderId),
-      getTracking(orderId).catch(() => null), // tracking opsional, jangan sampai gagalkan seluruh halaman
+      getTracking(orderId).catch(() => null),
     ])
       .then(([orderData, trackingData]) => {
         setOrder(orderData);

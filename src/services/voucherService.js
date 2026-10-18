@@ -5,5 +5,5 @@ export async function checkVoucher(code, totalPrice) {
     code,
     total_price: totalPrice,
   });
-  return response.data; // { valid, voucher: { code, type, value, discount } }
+  return response.data;
 }

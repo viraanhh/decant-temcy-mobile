@@ -1,23 +1,23 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 import * as wishlistService from "../services/wishlistService";
-import * as Haptics from "expo-haptics"; // <-- IMPORT HAPTICS
+import * as Haptics from "expo-haptics";
 
 const WishlistContext = createContext(null);
 
 export function WishlistProvider({ children }) {
   const { user } = useAuth();
-  const [favorites, setFavorites] = useState([]); // [{ productId, product }]
+  const [favorites, setFavorites] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(() => {
     if (!user) {
       setFavorites([]);
       setIsLoading(false);
-      return;
+      return Promise.resolve();
     }
     setIsLoading(true);
-    wishlistService.getFavorites()
+    return wishlistService.getFavorites()
       .then(setFavorites)
       .catch(() => setFavorites([]))
       .finally(() => setIsLoading(false));
@@ -31,7 +31,7 @@ export function WishlistProvider({ children }) {
   const isWishlisted = (productId) => wishlistIds.includes(productId);
 
   const toggleWishlist = async (productId) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); // <-- TAMBAHKAN GETARAN RINGAN
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     const wasWishlisted = isWishlisted(productId);
 
@@ -50,7 +50,7 @@ export function WishlistProvider({ children }) {
   };
 
   return (
-    <WishlistContext.Provider value={{ favorites, wishlistIds, isLoading, isWishlisted, toggleWishlist }}>
+    <WishlistContext.Provider value={{ favorites, wishlistIds, isLoading, isWishlisted, toggleWishlist, refresh }}>
       {children}
     </WishlistContext.Provider>
   );

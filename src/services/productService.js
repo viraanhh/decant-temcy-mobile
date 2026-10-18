@@ -1,15 +1,7 @@
 import apiClient from "./apiClient";
 
-// Set false kalau backend teman sudah siap dites & URL di api.js sudah diisi
 const USE_DUMMY_DATA = false;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DUMMY DATA — formatnya disamakan dengan struktur backend ASLI
-// (price_1ml, price_2ml, price_3ml, price_5ml, stock_ml)
-// Catatan: rating/review_count DIHAPUS dari dummy karena Product model
-// backend memang tidak punya kolom ini — rating cuma didapat dari
-// GET /reviews/product/:id (dipakai di ProductDetailScreen).
-// ─────────────────────────────────────────────────────────────────────────────
 const DUMMY_PRODUCTS_RAW = [
   {
     product_id: 1,
@@ -49,22 +41,6 @@ const DUMMY_PRODUCTS_RAW = [
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MAPPER — mengubah format backend → format yang dipakai layar mobile.
-//
-// PENTING (fix bug harga):
-//   Backend SUDAH menyediakan harga asli untuk tiap ukuran:
-//     price_1ml, price_2ml, price_3ml, price_5ml
-//   Harga-harga ini TIDAK linear (bukan cuma price_1ml × size), karena ada
-//   markup/diskon berbeda per ukuran. Jadi mapper WAJIB memakai field-field ini
-//   langsung, JANGAN dihitung ulang (price_1ml * size), karena itu yang bikin
-//   harga di mobile beda dengan di website.
-//
-//   Stok di backend juga bukan per-ukuran, tapi satu pool bersama: `stock_ml`
-//   (total ml tersisa). Jadi status stok tiap varian dicek dengan
-//   membandingkan stock_ml terhadap ukurannya.
-// ─────────────────────────────────────────────────────────────────────────────
-
 const VARIANT_DEFINITIONS = [
   { size_ml: 1, priceField: "price_1ml" },
   { size_ml: 2, priceField: "price_2ml" },
@@ -103,28 +79,17 @@ function mapProduct(raw) {
     price_1ml: raw.price_1ml,
     stock_ml: totalStock,
     image_filename: raw.image_filename,
-    // rating/review_count TIDAK ADA di Product backend — pakai sold_count
-    // sebagai indikator popularitas di tampilan list (Catalog/Home).
-    // Rating asli per produk hanya tersedia di ProductDetailScreen lewat
-    // getReviewsByProduct().
     sold_count: raw.sold_count ?? 0,
     variants,
   };
 }
 
-// Mapper khusus untuk response real API:
-// Backend /api/products mengembalikan { total, page, totalPages, products: [...] }
-// Backend /api/products/:id mengembalikan { product: {...} }
 export function mapProductFromApi(raw) {
   return mapProduct(raw);
 }
 
 const DUMMY_PRODUCTS = DUMMY_PRODUCTS_RAW.map(mapProduct);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// getProducts — ambil daftar produk (list/katalog), DENGAN PAGINATION
-// Return shape: { products: [...], page, totalPages, total }
-// ─────────────────────────────────────────────────────────────────────────────
 export async function getProducts(params = {}) {
   if (USE_DUMMY_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -147,11 +112,6 @@ export async function getProducts(params = {}) {
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// getAllProducts — ambil SEMUA produk sekaligus (loop semua halaman).
-// Cocok untuk kebutuhan seperti Wishlist yang perlu cek seluruh katalog,
-// bukan cuma 1 halaman. Total produk masih kecil (53), jadi aman dipakai.
-// ─────────────────────────────────────────────────────────────────────────────
 export async function getAllProducts(params = {}) {
   if (USE_DUMMY_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -170,10 +130,6 @@ export async function getAllProducts(params = {}) {
   return all.map(mapProductFromApi);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// getProductById — ambil detail 1 produk (dipakai di ProductDetailScreen)
-// Backend /api/products/:id mengembalikan { product: {...} }
-// ─────────────────────────────────────────────────────────────────────────────
 export async function getProductById(id) {
   if (USE_DUMMY_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 300));

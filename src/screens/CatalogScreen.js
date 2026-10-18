@@ -130,8 +130,7 @@ export default function CatalogScreen({ navigation, route }) {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  
-  // State Pull-to-Refresh
+
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [searchInput, setSearchInput] = useState(route?.params?.search || "");
@@ -186,7 +185,6 @@ export default function CatalogScreen({ navigation, route }) {
     }
   };
 
-  // Handler Pull-to-Refresh
   const onRefresh = async () => {
     setIsRefreshing(true);
     await loadPage(1);

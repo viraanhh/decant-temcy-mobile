@@ -3,10 +3,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { useAddress } from "../context/AddressContext";
 
-// Catatan: screen ini murni daftar (tidak ada TextInput sama sekali),
-// form tambah alamat sudah dipindah ke AddAddressScreen.js — jadi tidak
-// perlu useKeyboardHeight di sini, tidak ada apapun yang bisa tertutup
-// keyboard.
 export default function AddressBookScreen({ navigation, route }) {
   const selectMode = route?.params?.selectMode ?? false;
   const { addresses, removeAddress, setAsDefault, selectAddress } = useAddress();

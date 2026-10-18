@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
-import { View, Text, ScrollView, FlatList, Pressable, Modal, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, Pressable, Modal, StyleSheet, ActivityIndicator, Platform, ScrollView, KeyboardAvoidingView } from "react-native";
 import { COLORS } from "../constants/colors";
 import { useAddress } from "../context/AddressContext";
 import { getProvinces, getCities } from "../services/shippingService";
 import AppTextInput from "../components/AppTextInput";
-import useKeyboardHeight from "../hooks/useKeyboardHeight";
 
 function PickerModal({ visible, title, items, labelKey, onSelect, onClose }) {
   const [search, setSearch] = useState("");
@@ -35,12 +34,6 @@ function PickerModal({ visible, title, items, labelKey, onSelect, onClose }) {
 export default function AddAddressScreen({ navigation, route }) {
   const selectMode = route?.params?.selectMode ?? false;
   const { addAddress, selectAddress } = useAddress();
-
-  // FIX: dulu pakai KeyboardAvoidingView dengan behavior "undefined" di
-  // Android (bergantung native windowSoftInputMode yang tidak aktif di
-  // Expo Go). Sekarang pakai useKeyboardHeight (murni JS, reliable di
-  // Expo Go maupun build native).
-  const keyboardHeight = useKeyboardHeight();
 
   const [label, setLabel] = useState("");
   const [recipientName, setRecipientName] = useState("");
@@ -97,12 +90,15 @@ export default function AddAddressScreen({ navigation, route }) {
   };
 
   return (
-    <>
-      <View style={[styles.container, { paddingBottom: keyboardHeight }]}>
+    <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <ScrollView
-          contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 20 }}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 20 }}
         >
           <AppTextInput style={styles.input} value={label} onChangeText={setLabel} placeholder="Label (Rumah, Kos, dll)" />
           <AppTextInput style={styles.input} value={recipientName} onChangeText={setRecipientName} placeholder="Nama Penerima" />
@@ -136,11 +132,11 @@ export default function AddAddressScreen({ navigation, route }) {
             {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>Simpan Alamat</Text>}
           </Pressable>
         </View>
-      </View>
+      </KeyboardAvoidingView>
 
       <PickerModal visible={provinceModalOpen} title="Pilih Provinsi" items={provinces} labelKey="province" onSelect={handlePickProvince} onClose={() => setProvinceModalOpen(false)} />
       <PickerModal visible={cityModalOpen} title="Pilih Kota/Kabupaten" items={cities} labelKey="city_name" onSelect={(city) => { setSelectedCity(city); setCityModalOpen(false); }} onClose={() => setCityModalOpen(false)} />
-    </>
+    </View>
   );
 }
 

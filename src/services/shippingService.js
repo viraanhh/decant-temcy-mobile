@@ -10,7 +10,6 @@ export async function getCities(provinceId) {
   return response.data.cities || [];
 }
 
-// courier: 'jne' | 'jnt' | 'sicepat' | 'cod'
 export async function getShippingCost(destinationCityId, weight, courier) {
   const response = await apiClient.post("/shipping/cost", {
     destination: destinationCityId,

@@ -5,7 +5,6 @@ export async function getMyProfile() {
   return response.data.user;
 }
 
-// avatarUri opsional — kalau ada, dikirim sebagai multipart file.
 export async function updateProfile(fields, avatarUri) {
   const formData = new FormData();
   Object.entries(fields).forEach(([key, value]) => {

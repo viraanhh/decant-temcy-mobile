@@ -40,8 +40,6 @@ export default function LoginScreen({ navigation }) {
         <Text style={styles.brandBadgeText}>DECANT TEMCY</Text>
       </View>
 
-      {/* 🔴 Sementara pakai akun dummy: test@decant.com / 123456 */}
-
       <Text style={styles.label}>Email</Text>
       <AppTextInput
         style={styles.input}

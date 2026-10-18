@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Image } from "react-native";
+import { useState, useEffect, useRef } from "react";
+import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Image, Platform, KeyboardAvoidingView, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { COLORS } from "../constants/colors";
 import { useAuth } from "../context/AuthContext";
@@ -7,7 +7,6 @@ import { getMyProfile, updateProfile, changeMyPassword } from "../services/userS
 import PasswordInput from "../components/PasswordInput";
 import AppTextInput from "../components/AppTextInput";
 import { getAvatarUrl } from "../constants/api";
-import useKeyboardHeight from "../hooks/useKeyboardHeight";
 
 const TABS = [
   { key: "profile", label: "PROFIL" },
@@ -35,6 +34,29 @@ const LONGEVITY_OPTIONS = [
   { value: ">8 jam", label: "> 8 Jam" },
 ];
 
+const formatDateInput = (text) => {
+  if (!text) return "";
+  const cleaned = text.replace(/[^0-9]/g, "");
+  let formatted = cleaned;
+  if (cleaned.length > 2) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+  if (cleaned.length > 4) formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
+  return formatted;
+};
+
+const backendToDisplayDate = (dateStr) => {
+  if (!dateStr) return "";
+  const parts = dateStr.split("T")[0].split("-");
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return dateStr;
+};
+
+const displayToBackendDate = (dateStr) => {
+  if (!dateStr || dateStr.length !== 10) return dateStr;
+  const [day, month, year] = dateStr.split("/");
+  if (day && month && year) return `${year}-${month}-${day}`;
+  return dateStr;
+};
+
 function Chip({ label, active, onPress }) {
   return (
     <Pressable style={[styles.chip, active && styles.chipActive]} onPress={onPress}>
@@ -43,21 +65,19 @@ function Chip({ label, active, onPress }) {
   );
 }
 
-export default function AccountSettingsScreen() {
+export default function AccountSettingsScreen({ navigation }) {
   const { refreshUser } = useAuth();
-  const keyboardHeight = useKeyboardHeight();
   const [activeTab, setActiveTab] = useState("profile");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  // pref_aroma & pref_longevity tetap disimpan sebagai string gabungan koma
-  // (mis. "Woody,Citrus"), cuma cara menampilkan & mengedit-nya sekarang
-  // multi-select lewat toggleMultiValue/isMultiValueActive di bawah.
+  const [initialProfile, setInitialProfile] = useState(null);
   const [profile, setProfile] = useState({
     full_name: "", phone: "", username: "", birth_date: "", gender: "", bio: "",
     pref_gender: "", pref_aroma: "", pref_longevity: "",
   });
+  
   const [avatarUri, setAvatarUri] = useState(null);
   const [currentAvatar, setCurrentAvatar] = useState(null);
 
@@ -65,31 +85,64 @@ export default function AccountSettingsScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const isSavedRef = useRef(false);
+
   useEffect(() => {
     getMyProfile().then((user) => {
-      setProfile({
+      const loadedProfile = {
         full_name: user.full_name || "",
         phone: user.phone || "",
         username: user.username || "",
-        birth_date: user.birth_date || "",
+        birth_date: backendToDisplayDate(user.birth_date) || "",
         gender: user.gender || "",
         bio: user.bio || "",
         pref_gender: user.pref_gender || "",
         pref_aroma: user.pref_aroma || "",
         pref_longevity: user.pref_longevity || "",
-      });
+      };
+      setProfile(loadedProfile);
+      setInitialProfile(loadedProfile);
       setCurrentAvatar(user.avatar);
       setIsLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      const hasProfileChanges = initialProfile && JSON.stringify(profile) !== JSON.stringify(initialProfile);
+      const hasAvatarChanges = avatarUri !== null;
+      const hasPasswordChanges = oldPassword !== "" || newPassword !== "" || confirmPassword !== "";
+      
+      const hasUnsavedChanges = hasProfileChanges || hasAvatarChanges || hasPasswordChanges;
+
+      if (!hasUnsavedChanges || isSavedRef.current) {
+        return;
+      }
+
+      e.preventDefault();
+
+      Alert.alert(
+        'Perubahan Belum Disimpan',
+        'Anda memiliki perubahan yang belum disimpan. Yakin ingin kembali dan membuang perubahan?',
+        [
+          { text: 'Batal', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Tetap Kembali',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, profile, initialProfile, avatarUri, oldPassword, newPassword, confirmPassword]);
 
   const showMessage = (text) => {
     setMessage(text);
     setTimeout(() => setMessage(""), 3000);
   };
 
-  // Helper untuk field preferensi multi-select (pref_aroma, pref_longevity):
-  // nilai disimpan sebagai satu string dipisah koma di dalam state `profile`.
   const toggleMultiValue = (field, value) => {
     const current = profile[field] ? profile[field].split(",") : [];
     const updated = current.includes(value)
@@ -113,9 +166,20 @@ export default function AccountSettingsScreen() {
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
-      await updateProfile(profile, avatarUri);
+      const payload = {
+        ...profile,
+        birth_date: displayToBackendDate(profile.birth_date)
+      };
+
+      await updateProfile(payload, avatarUri);
       await refreshUser();
       showMessage("Profil berhasil disimpan");
+      
+      setTimeout(() => {
+        isSavedRef.current = true;
+        if (navigation.canGoBack()) navigation.goBack();
+      }, 1000);
+
     } catch (err) {
       showMessage(err?.response?.data?.message || "Gagal menyimpan profil");
     } finally {
@@ -132,6 +196,12 @@ export default function AccountSettingsScreen() {
         pref_longevity: profile.pref_longevity,
       });
       showMessage("Preferensi berhasil disimpan");
+
+      setTimeout(() => {
+        isSavedRef.current = true;
+        if (navigation.canGoBack()) navigation.goBack();
+      }, 1000);
+
     } catch (err) {
       showMessage(err?.response?.data?.message || "Gagal menyimpan preferensi");
     } finally {
@@ -188,96 +258,109 @@ export default function AccountSettingsScreen() {
         </View>
       )}
 
-      <ScrollView 
-        keyboardDismissMode="on-drag" 
-        contentContainerStyle={{ padding: 20, paddingBottom: 20 + keyboardHeight }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {activeTab === "profile" && (
-          <>
-            <Pressable style={styles.avatarWrapper} onPress={pickAvatar}>
-              {avatarUri || getAvatarUrl(currentAvatar) ? (
-                <Image source={{ uri: avatarUri || getAvatarUrl(currentAvatar) }} style={styles.avatar} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>Ubah Foto</Text>
-                </View>
-              )}
-            </Pressable>
+        <ScrollView
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+        >
+          {activeTab === "profile" && (
+            <>
+              <Pressable style={styles.avatarWrapper} onPress={pickAvatar}>
+                {avatarUri || getAvatarUrl(currentAvatar) ? (
+                  <Image source={{ uri: avatarUri || getAvatarUrl(currentAvatar) }} style={styles.avatar} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>Ubah Foto</Text>
+                  </View>
+                )}
+              </Pressable>
 
-            <Text style={styles.label}>Nama Lengkap</Text>
-            <AppTextInput style={styles.input} value={profile.full_name} onChangeText={(v) => setProfile({ ...profile, full_name: v })} />
+              <Text style={styles.label}>Nama Lengkap</Text>
+              <AppTextInput style={styles.input} value={profile.full_name} onChangeText={(v) => setProfile({ ...profile, full_name: v })} />
 
-            <Text style={styles.label}>Username</Text>
-            <AppTextInput style={styles.input} value={profile.username} onChangeText={(v) => setProfile({ ...profile, username: v })} autoCapitalize="none" />
+              <Text style={styles.label}>Username</Text>
+              <AppTextInput style={styles.input} value={profile.username} onChangeText={(v) => setProfile({ ...profile, username: v })} autoCapitalize="none" />
 
-            <Text style={styles.label}>No. Telepon</Text>
-            <AppTextInput style={styles.input} value={profile.phone} onChangeText={(v) => setProfile({ ...profile, phone: v })} keyboardType="phone-pad" />
+              <Text style={styles.label}>No. Telepon</Text>
+              <AppTextInput style={styles.input} value={profile.phone} onChangeText={(v) => setProfile({ ...profile, phone: v })} keyboardType="phone-pad" />
 
-            <Text style={styles.label}>Tanggal Lahir (YYYY-MM-DD)</Text>
-            <AppTextInput style={styles.input} value={profile.birth_date} onChangeText={(v) => setProfile({ ...profile, birth_date: v })} placeholder="1998-05-20" />
+              <Text style={styles.label}>Tanggal Lahir (DD/MM/YYYY)</Text>
+              <AppTextInput 
+                style={styles.input} 
+                value={profile.birth_date} 
+                onChangeText={(v) => setProfile({ ...profile, birth_date: formatDateInput(v) })} 
+                placeholder="20/05/1998" 
+                keyboardType="number-pad"
+                maxLength={10}
+              />
 
-            <Text style={styles.label}>Gender</Text>
-            <View style={styles.chipRow}>
-              {GENDER_OPTIONS.map((opt) => (
-                <Chip key={opt.value} label={opt.label} active={profile.gender === opt.value} onPress={() => setProfile({ ...profile, gender: opt.value })} />
-              ))}
-            </View>
+              <Text style={styles.label}>Gender</Text>
+              <View style={styles.chipRow}>
+                {GENDER_OPTIONS.map((opt) => (
+                  <Chip key={opt.value} label={opt.label} active={profile.gender === opt.value} onPress={() => setProfile({ ...profile, gender: opt.value })} />
+                ))}
+              </View>
 
-            <Text style={styles.label}>Bio</Text>
-            <AppTextInput style={[styles.input, { height: 80 }]} value={profile.bio} onChangeText={(v) => setProfile({ ...profile, bio: v })} multiline />
+              <Text style={styles.label}>Bio</Text>
+              <AppTextInput style={[styles.input, { height: 80 }]} value={profile.bio} onChangeText={(v) => setProfile({ ...profile, bio: v })} multiline />
 
-            <Pressable style={styles.saveButton} onPress={handleSaveProfile} disabled={isSaving}>
-              {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>Simpan Profil</Text>}
-            </Pressable>
-          </>
-        )}
+              <Pressable style={styles.saveButton} onPress={handleSaveProfile} disabled={isSaving}>
+                {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>Simpan Profil</Text>}
+              </Pressable>
+            </>
+          )}
 
-        {activeTab === "password" && (
-          <>
-            <Text style={styles.label}>Password Lama</Text>
-            <PasswordInput value={oldPassword} onChangeText={setOldPassword} placeholder="Password lama" />
+          {activeTab === "password" && (
+            <>
+              <Text style={styles.label}>Password Lama</Text>
+              <PasswordInput value={oldPassword} onChangeText={setOldPassword} placeholder="Password lama" />
 
-            <Text style={styles.label}>Password Baru</Text>
-            <PasswordInput value={newPassword} onChangeText={setNewPassword} placeholder="Password baru" />
+              <Text style={styles.label}>Password Baru</Text>
+              <PasswordInput value={newPassword} onChangeText={setNewPassword} placeholder="Password baru" />
 
-            <Text style={styles.label}>Konfirmasi Password Baru</Text>
-            <PasswordInput value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Konfirmasi password baru" />
+              <Text style={styles.label}>Konfirmasi Password Baru</Text>
+              <PasswordInput value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Konfirmasi password baru" />
 
-            <Pressable style={styles.saveButton} onPress={handleChangePassword} disabled={isSaving}>
-              {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>Ubah Password</Text>}
-            </Pressable>
-          </>
-        )}
+              <Pressable style={styles.saveButton} onPress={handleChangePassword} disabled={isSaving}>
+                {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>Ubah Password</Text>}
+              </Pressable>
+            </>
+          )}
 
-        {activeTab === "preference" && (
-          <>
-            <Text style={styles.label}>Preferensi Gender Parfum (pilih satu)</Text>
-            <View style={styles.chipRow}>
-              {PREF_GENDER_OPTIONS.map((opt) => (
-                <Chip key={opt.value} label={opt.label} active={profile.pref_gender === opt.value} onPress={() => setProfile({ ...profile, pref_gender: opt.value })} />
-              ))}
-            </View>
+          {activeTab === "preference" && (
+            <>
+              <Text style={styles.label}>Preferensi Gender Parfum (pilih satu)</Text>
+              <View style={styles.chipRow}>
+                {PREF_GENDER_OPTIONS.map((opt) => (
+                  <Chip key={opt.value} label={opt.label} active={profile.pref_gender === opt.value} onPress={() => setProfile({ ...profile, pref_gender: opt.value })} />
+                ))}
+              </View>
 
-            <Text style={styles.label}>Aroma Favorit (boleh lebih dari satu)</Text>
-            <View style={styles.chipRow}>
-              {AROMA_OPTIONS.map((aroma) => (
-                <Chip key={aroma} label={aroma} active={isMultiValueActive("pref_aroma", aroma)} onPress={() => toggleMultiValue("pref_aroma", aroma)} />
-              ))}
-            </View>
+              <Text style={styles.label}>Aroma Favorit (boleh lebih dari satu)</Text>
+              <View style={styles.chipRow}>
+                {AROMA_OPTIONS.map((aroma) => (
+                  <Chip key={aroma} label={aroma} active={isMultiValueActive("pref_aroma", aroma)} onPress={() => toggleMultiValue("pref_aroma", aroma)} />
+                ))}
+              </View>
 
-            <Text style={styles.label}>Daya Tahan yang Disukai (boleh lebih dari satu)</Text>
-            <View style={styles.chipRow}>
-              {LONGEVITY_OPTIONS.map((opt) => (
-                <Chip key={opt.value} label={opt.label} active={isMultiValueActive("pref_longevity", opt.value)} onPress={() => toggleMultiValue("pref_longevity", opt.value)} />
-              ))}
-            </View>
+              <Text style={styles.label}>Daya Tahan yang Disukai (boleh lebih dari satu)</Text>
+              <View style={styles.chipRow}>
+                {LONGEVITY_OPTIONS.map((opt) => (
+                  <Chip key={opt.value} label={opt.label} active={isMultiValueActive("pref_longevity", opt.value)} onPress={() => toggleMultiValue("pref_longevity", opt.value)} />
+                ))}
+              </View>
 
-            <Pressable style={styles.saveButton} onPress={handleSavePreference} disabled={isSaving}>
-              {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>Simpan Preferensi</Text>}
-            </Pressable>
-          </>
-        )}
-      </ScrollView>
+              <Pressable style={styles.saveButton} onPress={handleSavePreference} disabled={isSaving}>
+                {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>Simpan Preferensi</Text>}
+              </Pressable>
+            </>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -302,6 +385,6 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   chipText: { color: COLORS.textMuted, fontSize: 12 },
   chipTextActive: { color: COLORS.text, fontWeight: "600" },
-  saveButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 24 },
+  saveButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 24, marginBottom: 40 },
   saveButtonText: { color: COLORS.text, fontWeight: "600" },
 });

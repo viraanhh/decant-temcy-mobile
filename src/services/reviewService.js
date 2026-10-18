@@ -2,9 +2,6 @@ import apiClient from "./apiClient";
 
 const USE_DUMMY_DATA = false;
 
-// 🔴 Field user.full_name masih asumsi dari struktur User model yang kita
-// tahu (kolom full_name) — belum pernah lihat JSON asli 1 review dengan
-// relasi user ter-include. Kalau field beda, ubah di sini saja.
 function mapBackendReview(r) {
   return {
     id: r.review_id ?? r.id,
@@ -31,8 +28,6 @@ export async function getReviewsByProduct(productId) {
 export async function submitReview({ productId, rating, comment }) {
   if (USE_DUMMY_DATA) return null;
 
-  // Backend TIDAK butuh orderItemId — tidak ada validasi "harus sudah beli"
-  // di backend saat ini, hanya product_id, rating, comment.
   const response = await apiClient.post("/reviews", {
     product_id: productId,
     rating,

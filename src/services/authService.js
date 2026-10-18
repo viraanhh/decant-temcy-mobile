@@ -1,18 +1,11 @@
 import apiClient from "./apiClient";
 import * as SecureStore from "expo-secure-store";
 
-// Dummy dimatikan — backend asli sudah terhubung.
-// Fallback dummy TETAP disimpan (dikomentari) untuk jaga-jaga kalau
-// server lokal sedang mati saat development di tempat lain.
 const USE_DUMMY_AUTH = false;
 
 const TOKEN_KEY = "authToken";
 const USER_KEY = "authUser";
 
-// Backend mengembalikan field user dengan nama berbeda dari yang
-// dipakai UI mobile (full_name, user_id, dst). Kita mapping di sini
-// SEKALI, supaya HomeScreen/ProfileScreen/dll tetap pakai `user.name`
-// dan `user.id` tanpa perlu diubah.
 function mapBackendUser(backendUser) {
   return {
     id: backendUser.user_id,
@@ -36,7 +29,6 @@ export async function login(email, password) {
   }
 
   const response = await apiClient.post("/auth/login", { email, password });
-  // Response asli backend: { message, token, user: { user_id, full_name, ... } }
   return {
     token: response.data.token,
     user: mapBackendUser(response.data.user),
@@ -52,10 +44,6 @@ export async function register(name, email, phone, password) {
     };
   }
 
-  // Backend register TIDAK mengembalikan token — cuma { message, user }.
-  // Karena AuthContext.js mengharapkan { token, user } dari register()
-  // (sama seperti login), kita panggil login() di sini setelah register
-  // berhasil, supaya AuthContext.js TIDAK PERLU diubah sama sekali.
   await apiClient.post("/auth/register", {
     full_name: name,
     email,
@@ -86,7 +74,6 @@ export async function clearSession() {
 }
 
 export async function completeGoogleLogin(token) {
-  // Simpan token dulu supaya interceptor apiClient otomatis menyisipkannya
   await saveSession(token, { id: null, name: "", email: "" });
 
   const response = await apiClient.get("/auth/me");

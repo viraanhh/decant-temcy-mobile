@@ -1,6 +1,7 @@
+import { View, Image } from "react-native"; // <-- DITAMBAHKAN
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { COLORS } from "../constants/colors";
-import { useAuth } from "../context/AuthContext"; // FIX: Import useAuth
+import { useAuth } from "../context/AuthContext";
 
 import BottomTabNavigator from "./BottomTabNavigator";
 import LoginScreen from "../screens/LoginScreen";
@@ -26,24 +27,31 @@ import AdminTabNavigator from "./AdminTabNavigator";
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  // FIX: Ambil data user dan status loading dari AuthContext
   const { user, isLoading } = useAuth();
 
-  // Cegah render navigasi sebelum status login/sesi selesai dipastikan
-  if (isLoading) return null; 
+  // FIX: Custom Splash Screen JS dengan logo
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: COLORS.background, alignItems: "center", justifyContent: "center" }}>
+        <Image 
+          source={require("../../assets/logo.png")} 
+          style={{ width: 180, height: 180, resizeMode: "contain" }} 
+        />
+      </View>
+    );
+  }
 
-  // FIX: Tentukan route awal secara dinamis berdasarkan role
   const initialRouteName = user?.role === "admin" ? "AdminTabs" : "MainTabs";
 
   return (
     <Stack.Navigator
-      initialRouteName={initialRouteName} // FIX: Terapkan initialRouteName dinamis
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerStyle: { backgroundColor: COLORS.surface },
         headerTintColor: COLORS.text,
         headerShadowVisible: false,
         contentStyle: { backgroundColor: COLORS.background },
-        animation: "slide_from_right", // <-- DITAMBAHKAN
+        animation: "slide_from_right",
       }}
     >
       <Stack.Screen name="MainTabs" component={BottomTabNavigator} options={{ headerShown: false }} />
@@ -59,7 +67,7 @@ export default function RootNavigator() {
       <Stack.Screen name="WriteReview" component={WriteReviewScreen} options={{ title: "Tulis Ulasan" }} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} options={{ title: "Wishlist" }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: "Notifikasi" }} />
-      <Stack.Screen name="Chatbot" component={ChatbotScreen} options={{ title: "Chat dengan Kami" }} />
+      <Stack.Screen name="Chatbot" component={ChatbotScreen} options={{ headerShown: false }} />
       <Stack.Screen name="AddressBook" component={AddressBookScreen} options={{ title: "Alamat Saya" }} />
       <Stack.Screen name="About" component={AboutScreen} options={{ title: "Tentang Kami" }} />
       <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} options={{ title: "Akun Saya" }} />

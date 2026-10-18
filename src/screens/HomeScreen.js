@@ -110,7 +110,6 @@ export default function HomeScreen({ navigation }) {
     getHomeRecommendations(!!user).then(setRecommendations);
   }, [user]);
 
-  // Handler Pull-to-Refresh
   const onRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -138,7 +137,7 @@ export default function HomeScreen({ navigation }) {
           <View style={styles.headerRow}>
             <View>
               <Text style={styles.greeting}>
-                {user ? `Halo, ${user.name.split(" ")[0]} 👋` : "Selamat Datang 👋"}
+                {user ? `Halo, ${(user.name || user.full_name || "").split(" ")[0]} 👋` : "Selamat Datang 👋"}
               </Text>
               <Text style={styles.subGreeting}>Temukan parfum favoritmu hari ini</Text>
             </View>

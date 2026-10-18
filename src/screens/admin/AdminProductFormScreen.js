@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { View, Text, ScrollView, Pressable, Image, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
+import { useState, useEffect, useRef } from "react";
+import { View, Text, Pressable, Image, StyleSheet, ActivityIndicator, Platform, ScrollView, KeyboardAvoidingView, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
@@ -34,7 +34,7 @@ export default function AdminProductFormScreen({ route, navigation }) {
   const existing = route?.params?.product;
   const isEdit = !!existing;
 
-  const [form, setForm] = useState({
+  const [initialForm] = useState({
     brand: existing?.brand || "",
     product_name: existing?.product_name || "",
     inspirator: existing?.inspirator || "",
@@ -53,9 +53,40 @@ export default function AdminProductFormScreen({ route, navigation }) {
     price_5ml: existing?.variants?.find((v) => v.size_ml === 5)?.price ? formatNumberWithDots(existing.variants.find((v) => v.size_ml === 5).price) : "",
     stock_ml: existing?.stock_ml ? String(existing.stock_ml) : "",
   });
+
+  const [form, setForm] = useState(initialForm);
   const [imageUri, setImageUri] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const isSavedRef = useRef(false);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      const hasUnsavedChanges = JSON.stringify(form) !== JSON.stringify(initialForm) || imageUri !== null;
+
+      if (!hasUnsavedChanges || isSavedRef.current) {
+        return;
+      }
+
+      e.preventDefault();
+
+      Alert.alert(
+        'Perubahan Belum Disimpan',
+        'Anda memiliki perubahan yang belum disimpan. Yakin ingin kembali dan membuang perubahan?',
+        [
+          { text: 'Batal', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Tetap Kembali',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      );
+    });
+
+    return unsubscribe;
+  }, [navigation, form, initialForm, imageUri]);
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
 
@@ -88,6 +119,8 @@ export default function AdminProductFormScreen({ route, navigation }) {
       } else {
         await createAdminProduct(payload, imageUri);
       }
+
+      isSavedRef.current = true;
       navigation.goBack();
     } catch (err) {
       setError(err?.response?.data?.message || "Gagal menyimpan produk");
@@ -99,95 +132,104 @@ export default function AdminProductFormScreen({ route, navigation }) {
   const previewUri = imageUri || getProductImageUrl(existing?.image_filename);
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-      <ScrollView style={styles.container} contentContainerStyle={{ padding: SPACING.lg, gap: 10 }} keyboardDismissMode="on-drag">
-        <Pressable style={styles.imagePicker} onPress={pickImage}>
-          {previewUri ? (
-            <Image source={{ uri: previewUri }} style={styles.previewImage} />
-          ) : (
-            <>
-              <Ionicons name="camera-outline" size={28} color={COLORS.textFaint} />
-              <Text style={styles.imagePickerText}>Pilih Foto Produk</Text>
-            </>
-          )}
-        </Pressable>
+    <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: SPACING.lg, gap: 10, paddingBottom: 40 }}
+        >
+          <Pressable style={styles.imagePicker} onPress={pickImage}>
+            {previewUri ? (
+              <Image source={{ uri: previewUri }} style={styles.previewImage} />
+            ) : (
+              <>
+                <Ionicons name="camera-outline" size={28} color={COLORS.textFaint} />
+                <Text style={styles.imagePickerText}>Pilih Foto Produk</Text>
+              </>
+            )}
+          </Pressable>
 
-        <Pressable style={styles.changeImageButton} onPress={pickImage}>
-          <Ionicons name="image-outline" size={16} color={COLORS.primary} />
-          <Text style={styles.changeImageText}>{previewUri ? "Ganti Foto Produk" : "Unggah Foto"}</Text>
-        </Pressable>
+          <Pressable style={styles.changeImageButton} onPress={pickImage}>
+            <Ionicons name="image-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.changeImageText}>{previewUri ? "Ganti Foto Produk" : "Unggah Foto"}</Text>
+          </Pressable>
 
-        <Text style={styles.label}>Merek/Brand Parfum</Text>
-        <AppTextInput style={styles.input} value={form.brand} onChangeText={(v) => setField("brand", v)} placeholder="Contoh: HMNS, Afnan" />
+          <Text style={styles.label}>Merek/Brand Parfum</Text>
+          <AppTextInput style={styles.input} value={form.brand} onChangeText={(v) => setField("brand", v)} placeholder="Contoh: HMNS, Afnan" />
 
-        <Text style={styles.label}>Nama Produk</Text>
-        <AppTextInput style={styles.input} value={form.product_name} onChangeText={(v) => setField("product_name", v)} placeholder="Contoh: Above The Cloud" />
+          <Text style={styles.label}>Nama Produk</Text>
+          <AppTextInput style={styles.input} value={form.product_name} onChangeText={(v) => setField("product_name", v)} placeholder="Contoh: Above The Cloud" />
 
-        <Text style={styles.label}>Terinspirasi Dari (Opsional)</Text>
-        <AppTextInput style={styles.input} value={form.inspirator} onChangeText={(v) => setField("inspirator", v)} placeholder="Contoh: Creed Aventus" />
+          <Text style={styles.label}>Terinspirasi Dari (Opsional)</Text>
+          <AppTextInput style={styles.input} value={form.inspirator} onChangeText={(v) => setField("inspirator", v)} placeholder="Contoh: Creed Aventus" />
 
-        <Text style={styles.label}>Konsentrasi</Text>
-        <View style={styles.chipRow}>
-          {CONCENTRATION_OPTIONS.map((c) => (
-            <Chip key={c} label={c} active={form.concentration === c} onPress={() => setField("concentration", c)} />
-          ))}
-        </View>
+          <Text style={styles.label}>Konsentrasi</Text>
+          <View style={styles.chipRow}>
+            {CONCENTRATION_OPTIONS.map((c) => (
+              <Chip key={c} label={c} active={form.concentration === c} onPress={() => setField("concentration", c)} />
+            ))}
+          </View>
 
-        <Text style={styles.label}>Gender</Text>
-        <View style={styles.chipRow}>
-          {GENDER_OPTIONS.map((g) => (
-            <Chip key={g} label={g} active={form.gender === g} onPress={() => setField("gender", g)} />
-          ))}
-        </View>
+          <Text style={styles.label}>Gender</Text>
+          <View style={styles.chipRow}>
+            {GENDER_OPTIONS.map((g) => (
+              <Chip key={g} label={g} active={form.gender === g} onPress={() => setField("gender", g)} />
+            ))}
+          </View>
 
-        <Text style={styles.label}>Main Accords (Aroma Utama)</Text>
-        <AppTextInput style={styles.input} value={form.main_accords} onChangeText={(v) => setField("main_accords", v)} placeholder="Pisahkan dengan koma, contoh: Woody, Oud, Amber" />
+          <Text style={styles.label}>Main Accords (Aroma Utama)</Text>
+          <AppTextInput style={styles.input} value={form.main_accords} onChangeText={(v) => setField("main_accords", v)} placeholder="Pisahkan dengan koma, contoh: Woody, Oud, Amber" />
 
-        <Text style={styles.label}>Top Notes (Aroma Awal, Tercium Pertama)</Text>
-        <AppTextInput style={styles.input} value={form.top_notes} onChangeText={(v) => setField("top_notes", v)} placeholder="Contoh: Bergamot, Lemon" />
+          <Text style={styles.label}>Top Notes (Aroma Awal, Tercium Pertama)</Text>
+          <AppTextInput style={styles.input} value={form.top_notes} onChangeText={(v) => setField("top_notes", v)} placeholder="Contoh: Bergamot, Lemon" />
 
-        <Text style={styles.label}>Middle Notes (Aroma Inti/Jantung)</Text>
-        <AppTextInput style={styles.input} value={form.middle_notes} onChangeText={(v) => setField("middle_notes", v)} placeholder="Contoh: Rose, Jasmine" />
+          <Text style={styles.label}>Middle Notes (Aroma Inti/Jantung)</Text>
+          <AppTextInput style={styles.input} value={form.middle_notes} onChangeText={(v) => setField("middle_notes", v)} placeholder="Contoh: Rose, Jasmine" />
 
-        <Text style={styles.label}>Base Notes (Aroma Dasar, Bertahan Lama)</Text>
-        <AppTextInput style={styles.input} value={form.base_notes} onChangeText={(v) => setField("base_notes", v)} placeholder="Contoh: Musk, Sandalwood" />
+          <Text style={styles.label}>Base Notes (Aroma Dasar, Bertahan Lama)</Text>
+          <AppTextInput style={styles.input} value={form.base_notes} onChangeText={(v) => setField("base_notes", v)} placeholder="Contoh: Musk, Sandalwood" />
 
-        <Text style={styles.label}>Deskripsi Produk</Text>
-        <AppTextInput style={[styles.input, styles.textArea]} value={form.description} onChangeText={(v) => setField("description", v)} placeholder="Ceritakan karakter & kesan parfum ini..." multiline textAlignVertical="top" />
+          <Text style={styles.label}>Deskripsi Produk</Text>
+          <AppTextInput style={[styles.input, styles.textArea]} value={form.description} onChangeText={(v) => setField("description", v)} placeholder="Ceritakan karakter & kesan parfum ini..." multiline textAlignVertical="top" />
 
-        <Text style={styles.label}>Kelebihan / Keunggulan (Opsional)</Text>
-        <AppTextInput style={[styles.input, styles.textArea]} value={form.pros} onChangeText={(v) => setField("pros", v)} placeholder="Contoh: Aroma sangat awet seharian, cocok untuk cuaca panas..." multiline textAlignVertical="top" />
+          <Text style={styles.label}>Kelebihan / Keunggulan (Opsional)</Text>
+          <AppTextInput style={[styles.input, styles.textArea]} value={form.pros} onChangeText={(v) => setField("pros", v)} placeholder="Contoh: Aroma sangat awet seharian, cocok untuk cuaca panas..." multiline textAlignVertical="top" />
 
-        <Text style={styles.label}>Kekurangan (Opsional)</Text>
-        <AppTextInput style={[styles.input, styles.textArea]} value={form.cons} onChangeText={(v) => setField("cons", v)} placeholder="Contoh: Wangi semprotan pertama sedikit tajam..." multiline textAlignVertical="top" />
+          <Text style={styles.label}>Kekurangan (Opsional)</Text>
+          <AppTextInput style={[styles.input, styles.textArea]} value={form.cons} onChangeText={(v) => setField("cons", v)} placeholder="Contoh: Wangi semprotan pertama sedikit tajam..." multiline textAlignVertical="top" />
 
-        <Text style={styles.label}>Harga per Ukuran (Rp)</Text>
-        <View style={styles.priceRow}>
-          <AppTextInput style={[styles.input, styles.priceInput]} value={form.price_1ml} onChangeText={(v) => setField("price_1ml", formatNumberWithDots(v))} placeholder="1ml" keyboardType="number-pad" />
-          <AppTextInput style={[styles.input, styles.priceInput]} value={form.price_2ml} onChangeText={(v) => setField("price_2ml", formatNumberWithDots(v))} placeholder="2ml" keyboardType="number-pad" />
-          <AppTextInput style={[styles.input, styles.priceInput]} value={form.price_3ml} onChangeText={(v) => setField("price_3ml", formatNumberWithDots(v))} placeholder="3ml" keyboardType="number-pad" />
-          <AppTextInput style={[styles.input, styles.priceInput]} value={form.price_5ml} onChangeText={(v) => setField("price_5ml", formatNumberWithDots(v))} placeholder="5ml" keyboardType="number-pad" />
-        </View>
+          <Text style={styles.label}>Harga per Ukuran (Rp)</Text>
+          <View style={styles.priceRow}>
+            <AppTextInput style={[styles.input, styles.priceInput]} value={form.price_1ml} onChangeText={(v) => setField("price_1ml", formatNumberWithDots(v))} placeholder="1ml" keyboardType="number-pad" />
+            <AppTextInput style={[styles.input, styles.priceInput]} value={form.price_2ml} onChangeText={(v) => setField("price_2ml", formatNumberWithDots(v))} placeholder="2ml" keyboardType="number-pad" />
+            <AppTextInput style={[styles.input, styles.priceInput]} value={form.price_3ml} onChangeText={(v) => setField("price_3ml", formatNumberWithDots(v))} placeholder="3ml" keyboardType="number-pad" />
+            <AppTextInput style={[styles.input, styles.priceInput]} value={form.price_5ml} onChangeText={(v) => setField("price_5ml", formatNumberWithDots(v))} placeholder="5ml" keyboardType="number-pad" />
+          </View>
 
-        <Text style={styles.label}>Stok Total (dalam ml, dipakai bersama semua ukuran)</Text>
-        <View style={styles.inputWithSuffixContainer}>
-          <AppTextInput 
-            style={[styles.input, styles.inputWithoutBorder]} 
-            value={form.stock_ml} 
-            onChangeText={(v) => setField("stock_ml", v)} 
-            placeholder="Contoh: 150" 
-            keyboardType="number-pad" 
-          />
-          <Text style={styles.inlineSuffix}>ml</Text>
-        </View>
+          <Text style={styles.label}>Stok Total (dalam ml, dipakai bersama semua ukuran)</Text>
+          <View style={styles.inputWithSuffixContainer}>
+            <AppTextInput 
+              style={[styles.input, styles.inputWithoutBorder]} 
+              value={form.stock_ml} 
+              onChangeText={(v) => setField("stock_ml", v)} 
+              placeholder="Contoh: 150" 
+              keyboardType="number-pad" 
+            />
+            <Text style={styles.inlineSuffix}>ml</Text>
+          </View>
 
-        {!!error && <Text style={styles.errorText}>{error}</Text>}
+          {!!error && <Text style={styles.errorText}>{error}</Text>}
 
-        <Pressable style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-          {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>{isEdit ? "Simpan Perubahan" : "Tambah Produk"}</Text>}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <Pressable style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
+            {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>{isEdit ? "Simpan Perubahan" : "Tambah Produk"}</Text>}
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -230,6 +272,6 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: "row", gap: 8 },
   priceInput: { flex: 1 },
   errorText: { color: COLORS.primary, fontSize: 12 },
-  saveButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 10, marginBottom: 20 },
+  saveButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 10, marginBottom: 40 },
   saveButtonText: { color: COLORS.text, fontWeight: "600" },
 });

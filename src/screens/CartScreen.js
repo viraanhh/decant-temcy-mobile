@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, ScrollView, Pressable, StyleSheet, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { COLORS } from "../constants/colors";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import ProductImage from "../components/ProductImage";
 
 function formatRupiah(amount) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
@@ -13,11 +15,15 @@ function formatRupiah(amount) {
 function CartItemRow({ item, onIncrease, onDecrease, onRemove, disabled }) {
   return (
     <View style={[styles.itemRow, disabled && styles.itemRowDisabled]}>
-      <View style={styles.itemImagePlaceholder} />
+      <ProductImage 
+        filename={item.product?.image_filename} 
+        style={styles.itemImagePlaceholder} 
+        iconSize={20} 
+      />
       <View style={{ flex: 1 }}>
-        <Text style={styles.itemName}>{item.product.product_name}</Text>
+        <Text style={styles.itemName} numberOfLines={1}>{item.product?.product_name || "Produk"}</Text>
         <Text style={styles.itemVariant}>{item.variantSizeMl}ml</Text>
-        <Text style={styles.itemPrice}>{formatRupiah(item.variant.price)}</Text>
+        <Text style={styles.itemPrice}>{formatRupiah(item.variant?.price)}</Text>
       </View>
       <View style={styles.qtyControls}>
         <Pressable style={styles.qtyButton} onPress={onDecrease} disabled={disabled}>
@@ -28,8 +34,8 @@ function CartItemRow({ item, onIncrease, onDecrease, onRemove, disabled }) {
           <Text style={styles.qtyButtonText}>+</Text>
         </Pressable>
       </View>
-      <Pressable onPress={onRemove} style={{ marginLeft: 10 }} disabled={disabled}>
-        <Text style={{ color: COLORS.textFaint }}>✕</Text>
+      <Pressable onPress={onRemove} style={{ marginLeft: 10 }} disabled={disabled} hitSlop={10}>
+        <Text style={{ color: COLORS.textFaint, fontSize: 16 }}>✕</Text>
       </Pressable>
     </View>
   );
@@ -40,6 +46,7 @@ export default function CartScreen({ navigation }) {
   const { user } = useAuth();
 
   const [notice, setNotice] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const showNotice = (message) => {
     if (!message) return;
@@ -47,14 +54,23 @@ export default function CartScreen({ navigation }) {
     setTimeout(() => setNotice(""), 2500);
   };
 
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await refreshCart();
+    setIsRefreshing(false);
+  };
+
   const handleIncrease = async (item) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const result = await updateQuantity(item.cartItemId, item.quantity + 1);
     if (!result.success || result.message) {
       showNotice(result.message || "Stok tidak mencukupi");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
   };
 
   const handleDecrease = async (item) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const result = await updateQuantity(item.cartItemId, item.quantity - 1);
     if (!result.success) {
       showNotice(result.message || "Gagal memperbarui jumlah");
@@ -62,6 +78,7 @@ export default function CartScreen({ navigation }) {
   };
 
   const handleRemove = async (item) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const result = await removeFromCart(item.cartItemId);
     if (!result.success) {
       showNotice(result.message || "Gagal menghapus produk");
@@ -86,14 +103,19 @@ export default function CartScreen({ navigation }) {
 
   if (items.length === 0) {
     return (
-      <SafeAreaView style={styles.emptyContainer} edges={["top"]}>
-        <Text style={{ fontSize: 40 }}>🛒</Text>
-        <Text style={styles.emptyTitle}>Keranjang Kosong</Text>
-        <Text style={styles.emptySubtitle}>Belum ada produk di keranjangmu.</Text>
-        <Pressable style={styles.exploreButton} onPress={() => navigation.navigate("Katalog")}>
-          <Ionicons name="storefront-outline" size={16} color={COLORS.text} />
-          <Text style={styles.exploreButtonText}>Jelajahi Katalog</Text>
-        </Pressable>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <ScrollView 
+          contentContainerStyle={styles.emptyScroll} 
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
+        >
+          <Text style={{ fontSize: 40 }}>🛒</Text>
+          <Text style={styles.emptyTitle}>Keranjang Kosong</Text>
+          <Text style={styles.emptySubtitle}>Belum ada produk di keranjangmu.</Text>
+          <Pressable style={styles.exploreButton} onPress={() => navigation.navigate("Katalog")}>
+            <Ionicons name="storefront-outline" size={16} color={COLORS.text} />
+            <Text style={styles.exploreButtonText}>Jelajahi Katalog</Text>
+          </Pressable>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -120,7 +142,8 @@ export default function CartScreen({ navigation }) {
       <FlatList
         data={items}
         keyExtractor={(item) => String(item.cartItemId)}
-        contentContainerStyle={{ padding: 16, gap: 10 }}
+        contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 20 }}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
         renderItem={({ item }) => (
           <CartItemRow
             item={item}
@@ -152,6 +175,7 @@ export default function CartScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   emptyContainer: { flex: 1, backgroundColor: COLORS.background, alignItems: "center", justifyContent: "center", padding: 24 },
+  emptyScroll: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   emptyTitle: { color: COLORS.text, fontSize: 16, fontWeight: "600", marginTop: 12 },
   emptySubtitle: { color: COLORS.textMuted, fontSize: 13, marginTop: 4, textAlign: "center" },
   exploreButton: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.primary, borderRadius: 8, paddingVertical: 12, paddingHorizontal: 24, marginTop: 20 },
@@ -171,7 +195,7 @@ const styles = StyleSheet.create({
   qtyButton: { width: 26, height: 26, borderRadius: 6, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" },
   qtyButtonText: { color: COLORS.text, fontSize: 14 },
   qtyText: { color: COLORS.text, fontSize: 13, minWidth: 16, textAlign: "center" },
-  footer: { padding: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.background },
   subtotalRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
   subtotalLabel: { color: COLORS.textMuted, fontSize: 13 },
   subtotalValue: { color: COLORS.text, fontSize: 16, fontWeight: "700" },

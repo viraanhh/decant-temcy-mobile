@@ -34,12 +34,16 @@ export default function AdminReviewListScreen() {
   const [customEnd, setCustomEnd] = useState("");
   const [isTimeModalVisible, setTimeModalVisible] = useState(false);
 
+  const fetchReviews = () => {
+    setIsLoading(true);
+    getAdminReviews({ page: 1, limit: FETCH_LIMIT })
+      .then((res) => setReviews(res.reviews))
+      .finally(() => setIsLoading(false));
+  };
+
   useFocusEffect(
     useCallback(() => {
-      setIsLoading(true);
-      getAdminReviews({ page: 1, limit: FETCH_LIMIT })
-        .then((res) => setReviews(res.reviews))
-        .finally(() => setIsLoading(false));
+      fetchReviews();
     }, [])
   );
 
@@ -119,7 +123,7 @@ export default function AdminReviewListScreen() {
         <FlatList
           data={filteredReviews}
           keyExtractor={(item, index) => String(item.review_id || index)}
-          contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.sm, paddingTop: SPACING.sm }}
+          contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.sm, paddingTop: SPACING.sm, paddingBottom: 100 }}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
               {searchQuery || timeFilter !== "all" 
@@ -135,7 +139,10 @@ export default function AdminReviewListScreen() {
               </View>
               <Text style={styles.productName}>{item.product?.brand} · {item.product?.product_name}</Text>
               <Text style={styles.comment}>{item.comment}</Text>
-              <Text style={styles.date}>{new Date(item.createdAt || item.created_at).toLocaleDateString("id-ID")}</Text>
+
+              <View style={styles.cardFooter}>
+                <Text style={styles.date}>{new Date(item.createdAt || item.created_at).toLocaleDateString("id-ID")}</Text>
+              </View>
             </View>
           )}
         />
@@ -207,9 +214,11 @@ const styles = StyleSheet.create({
   stars: { color: COLORS.warning, fontSize: 12 },
   productName: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
   comment: { color: COLORS.text, fontSize: 13, marginTop: 6, lineHeight: 18 },
-  date: { color: COLORS.textFaint, fontSize: 10, marginTop: 8 },
 
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: SPACING.xl },
+  cardFooter: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
+  date: { color: COLORS.textFaint, fontSize: 10 },
+
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end", padding: SPACING.xl },
   modalContent: { backgroundColor: COLORS.background, borderRadius: RADIUS.lg, padding: SPACING.lg, ...CARD_SHADOW },
   modalTitle: { color: COLORS.text, fontSize: 16, fontWeight: "700", marginBottom: SPACING.sm },
   modalLabel: { color: COLORS.textMuted, fontSize: 11 },
@@ -218,5 +227,5 @@ const styles = StyleSheet.create({
   timeOptionText: { color: COLORS.text, fontSize: 14 },
   timeOptionTextActive: { color: COLORS.primary, fontWeight: "700" },
   applyButton: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, padding: 14, alignItems: "center", marginTop: SPACING.md },
-  applyButtonText: { color: COLORS.text, fontWeight: "600" },
+  applyButtonText: { color: COLORS.text, fontWeight: "600" }
 });

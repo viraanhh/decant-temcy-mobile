@@ -2,8 +2,6 @@ import apiClient from "./apiClient";
 
 const USE_DUMMY_DATA = false;
 
-// Mapping status backend asli ke label yang ditampilkan di UI.
-// Backend enum: pending, paid, processing, shipped, delivered, cancelled
 export const ORDER_STATUS_LABEL = {
   pending: { text: "Menunggu Pembayaran", color: "warning" },
   paid: { text: "Dibayar", color: "primary" },
@@ -34,10 +32,6 @@ function mapOrder(raw) {
     createdAt: raw.created_at ?? raw.createdAt,
     items: (raw.items || raw.order_items || []).map((item) => ({
       productId: item.product_id,
-      // Backend TIDAK kirim objek "product" bersarang di sini — product_name
-      // & brand adalah kolom langsung di order_items (snapshot saat checkout,
-      // supaya nama produk tetap sama di riwayat meski produk aslinya
-      // diedit/dihapus admin nanti). Pakai field ini langsung, bukan item.product.
       productName: item.product_name,
       brand: item.brand,
       sizeMl: item.size_ml,
@@ -87,7 +81,6 @@ export async function getOrderById(id) {
 export async function createPayment(orderId) {
   if (USE_DUMMY_DATA) return null;
 
-  // Backend Midtrans Snap: balikin { token, redirect_url, midtrans_order_id }
   const response = await apiClient.post(`/orders/my-orders/${orderId}/create-payment`);
-  return response.data; // otomatis mencakup midtrans_order_id dari backend
+  return response.data;
 }

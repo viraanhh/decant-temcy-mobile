@@ -11,14 +11,12 @@ function formatRupiah(amount) {
 }
 
 export default function WishlistScreen({ navigation }) {
-  // Ditambahkan fitur opsional refreshFavorites jika context mengeksposenya
-  const { favorites, isLoading, toggleWishlist, refreshFavorites } = useWishlist();
+  const { favorites, isLoading, toggleWishlist, refresh } = useWishlist();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
-  
-  // State Pull-to-Refresh
+
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const validFavorites = favorites.filter((f) => f.product);
@@ -30,13 +28,11 @@ export default function WishlistScreen({ navigation }) {
     return brand.includes(q) || name.includes(q);
   });
 
-  // Handler Pull-to-Refresh
   const onRefresh = async () => {
     setIsRefreshing(true);
-    if (refreshFavorites) {
-      await refreshFavorites();
+    if (refresh) {
+      await refresh();
     } else {
-      // Fallback jika belum terekspos di context (hanya mensimulasikan delay UI)
       await new Promise(resolve => setTimeout(resolve, 800));
     }
     setIsRefreshing(false);
@@ -68,7 +64,7 @@ export default function WishlistScreen({ navigation }) {
     Keyboard.dismiss();
   };
 
-  if (isLoading) {
+  if (isLoading && !isRefreshing) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator color={COLORS.primary} size="large" />
