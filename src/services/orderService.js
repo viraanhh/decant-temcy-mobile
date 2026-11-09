@@ -11,6 +11,13 @@ export const ORDER_STATUS_LABEL = {
   cancelled: { text: "Dibatalkan", color: "textFaint" },
 };
 
+export function getOrderStatusLabel(order) {
+  if (order.deliveryMethod === "pickup" && order.status === "shipped") {
+    return { text: "Siap Diambil", color: "primary" };
+  }
+  return ORDER_STATUS_LABEL[order.status] || { text: order.status, color: "textMuted" };
+}
+
 function mapOrder(raw) {
   return {
     id: raw.order_id ?? raw.id,
@@ -23,6 +30,8 @@ function mapOrder(raw) {
     shippingCity: raw.shipping_city,
     shippingNotes: raw.shipping_notes,
     deliveryMethod: raw.delivery_method,
+    pickupStore: raw.pickup_store || null,
+    pickupStoreId: raw.pickup_store_id,
     courier: raw.courier,
     courierService: raw.courier_service,
     shippingCost: Number(raw.shipping_cost ?? 0),
@@ -43,7 +52,7 @@ function mapOrder(raw) {
 
 export async function checkout({
   addressId, shippingName, shippingPhone, shippingAddress, shippingCity, shippingNotes,
-  deliveryMethod, courier, courierService, shippingCost, voucherCode,
+  deliveryMethod, courier, courierService, shippingCost, voucherCode, pickupStoreId, cartItemIds,
 }) {
   if (USE_DUMMY_DATA) return null;
 
@@ -59,6 +68,8 @@ export async function checkout({
     courier_service: courierService,
     shipping_cost: shippingCost,
     voucher_code: voucherCode || undefined,
+    pickup_store_id: pickupStoreId || undefined,
+    cart_item_ids: cartItemIds || undefined,
   });
 
   return mapOrder(response.data.order);
@@ -82,5 +93,18 @@ export async function createPayment(orderId) {
   if (USE_DUMMY_DATA) return null;
 
   const response = await apiClient.post(`/orders/my-orders/${orderId}/create-payment`);
+  return response.data;
+}
+
+export async function getPaymentStatus(orderId) {
+  if (USE_DUMMY_DATA) return null;
+
+  const response = await apiClient.get(`/orders/my-orders/${orderId}/payment-status`);
+  return response.data;
+}
+
+// PUT /api/orders/my-orders/:id/cancel (hanya pesanan berstatus pending)
+export async function cancelOrder(orderId) {
+  const response = await apiClient.put(`/orders/my-orders/${orderId}/cancel`);
   return response.data;
 }

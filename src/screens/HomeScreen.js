@@ -98,30 +98,32 @@ export default function HomeScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [recommendations, setRecommendations] = useState([]);
   
-  // State Pull-to-Refresh
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    getProducts({ page: 1, limit: 20 })
-      .then((result) => setProducts(result.products))
-      .catch(() => setProducts([]))
-      .finally(() => setIsLoading(false));
-
-    getHomeRecommendations(!!user).then(setRecommendations);
-  }, [user]);
-
-  const onRefresh = async () => {
-    setIsRefreshing(true);
+  const fetchAllData = async () => {
     try {
-      await Promise.all([
-        getProducts({ page: 1, limit: 20 }).then((r) => setProducts(r.products)),
-        getHomeRecommendations(!!user).then(setRecommendations),
+      const [prodRes, recRes] = await Promise.all([
+        getProducts({ page: 1, limit: 20 }),
+        getHomeRecommendations(!!user),
       ]);
-    } catch (e) {
-      console.log(e);
+      setProducts(prodRes.products || []);
+      setRecommendations(recRes || []);
+    } catch (error) {
+      console.log("Error fetching home data:", error);
     } finally {
+      setIsLoading(false);
       setIsRefreshing(false);
     }
+  };
+
+  useEffect(() => {
+    setIsLoading(true);
+    fetchAllData();
+  }, [user]);
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    fetchAllData();
   };
 
   const goToDetail = (id) => navigation.navigate("ProductDetail", { productId: id });
@@ -144,15 +146,25 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        <LinearGradient
-          colors={[COLORS.primary, COLORS.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.banner}
-        >
-          <Text style={styles.bannerLabel}>PROMO SPESIAL MAHASISWA BARU</Text>
-          <Text style={styles.bannerText}>Diskon 10%{"\n"}Hanya Dengan Menunjukkan KTM</Text>
-        </LinearGradient>
+        {/* BANNER INTERAKTIF PENGGANTI PROMO */}
+        <Pressable onPress={() => navigation.navigate("Chatbot")} style={styles.aiBannerWrapper}>
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.aiBanner}
+          >
+            <View style={styles.aiBannerContent}>
+              <Text style={styles.aiBannerTitle}>Bingung Pilih Parfum?</Text>
+              <Text style={styles.aiBannerText}>Biar asisten pintar kami bantu temukan aroma khas yang paling cocok untukmu 🪄</Text>
+              <View style={styles.aiBannerButton}>
+                <Text style={styles.aiBannerButtonText}>Tanya Sekarang</Text>
+                <Ionicons name="arrow-forward" size={16} color={COLORS.primary} />
+              </View>
+            </View>
+            <Ionicons name="sparkles" size={90} color="rgba(255,255,255,0.15)" style={styles.aiBannerIconBG} />
+          </LinearGradient>
+        </Pressable>
 
         <BrandMarquee />
 
@@ -233,14 +245,17 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   greeting: { color: COLORS.text, fontSize: 22, fontWeight: "700" },
   subGreeting: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  chatButton: {
-    backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border,
-    borderRadius: RADIUS.full, width: 42, height: 42, alignItems: "center", justifyContent: "center",
-    ...CARD_SHADOW,
-  },
-  banner: { margin: SPACING.lg, borderRadius: RADIUS.lg, padding: SPACING.xl, ...CARD_SHADOW },
-  bannerLabel: { color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: "700", letterSpacing: 1 },
-  bannerText: { color: COLORS.text, fontSize: 20, fontWeight: "700", lineHeight: 26, marginTop: 6 },
+  
+  // Style Banner Baru
+  aiBannerWrapper: { margin: SPACING.lg, ...CARD_SHADOW },
+  aiBanner: { borderRadius: RADIUS.lg, overflow: 'hidden' },
+  aiBannerContent: { padding: SPACING.xl, zIndex: 2 },
+  aiBannerTitle: { color: "#FFFFFF", fontSize: 18, fontWeight: "800", marginBottom: 6 },
+  aiBannerText: { color: "rgba(255,255,255,0.9)", fontSize: 13, lineHeight: 20, marginBottom: 16, paddingRight: 40 },
+  aiBannerButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 16, borderRadius: RADIUS.full, gap: 6 },
+  aiBannerButtonText: { color: COLORS.primary, fontSize: 12, fontWeight: "700" },
+  aiBannerIconBG: { position: 'absolute', right: -15, bottom: -15, zIndex: 1, transform: [{ rotate: '-15deg' }] },
+
   marqueeContainer: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: COLORS.border, paddingVertical: 14, overflow: "hidden", backgroundColor: COLORS.surface, marginTop: SPACING.sm },
   marqueeRow: { flexDirection: "row" },
   marqueeItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16 },

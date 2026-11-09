@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, RefreshControl, Animated } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
@@ -39,6 +39,11 @@ const SORT_OPTIONS = [
   { value: "termurah", label: "Termurah" },
   { value: "termahal", label: "Termahal" },
 ];
+const RATING_OPTIONS = [
+  { value: "", label: "Semua Rating" },
+  { value: "4", label: "★ 4 ke atas" },
+  { value: "3", label: "★ 3 ke atas" },
+];
 
 function formatRupiah(amount) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
@@ -48,15 +53,25 @@ function ProductCard({ product, onPress }) {
   const lowestPrice = Math.min(...product.variants.map((v) => v.price));
   return (
     <Pressable style={styles.card} onPress={onPress}>
-      <ProductImage filename={product.image_filename} style={styles.imagePlaceholder} iconSize={28} />
+      <ProductImage filename={product.image_filename} style={styles.imagePlaceholder} iconSize={32} />
       <View style={styles.cardInfo}>
         <Text style={styles.brand}>{product.brand}</Text>
         <Text style={styles.name} numberOfLines={1}>{product.product_name}</Text>
+        
         <Text style={styles.category} numberOfLines={1}>{product.concentration}</Text>
+        {product.review_count > 0 && (
+          <View style={styles.ratingLine}>
+            <Ionicons name="star" size={11} color={COLORS.warning} />
+            <Text style={styles.ratingLineText}>
+              {product.avg_rating.toFixed(1)} ({product.review_count})
+            </Text>
+          </View>
+        )}
+
         <View style={styles.bottomRow}>
           <Text style={styles.price}>{formatRupiah(lowestPrice)}</Text>
           <View style={styles.ratingRow}>
-            <Ionicons name="flame-outline" size={11} color={COLORS.textMuted} />
+            <Ionicons name="flame" size={12} color={COLORS.primary} />
             <Text style={styles.rating}>{product.sold_count} terjual</Text>
           </View>
         </View>
@@ -65,23 +80,36 @@ function ProductCard({ product, onPress }) {
   );
 }
 
-function FilterChipGroup({ options, value, onChange }) {
+// === KOMPONEN FILTER COLLAPSIBLE ===
+function CollapsibleFilterSection({ title, options, value, onChange, isExpanded, onToggle }) {
   return (
-    <FlatList
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      data={options}
-      keyExtractor={(item) => item.value || item.label}
-      contentContainerStyle={{ gap: 8 }}
-      renderItem={({ item }) => {
-        const isActive = value === item.value;
-        return (
-          <Pressable style={[styles.chip, isActive && styles.chipActive]} onPress={() => onChange(item.value)}>
-            <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{item.label}</Text>
-          </Pressable>
-        );
-      }}
-    />
+    <View style={styles.filterSection}>
+      <Pressable style={styles.filterHeader} onPress={onToggle}>
+        <Text style={styles.filterTitle}>{title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {value !== "" && <View style={styles.activeDot} />}
+          <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textMuted} />
+        </View>
+      </Pressable>
+      
+      {isExpanded && (
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={options}
+          keyExtractor={(item) => item.value || item.label}
+          contentContainerStyle={{ gap: 8, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm }}
+          renderItem={({ item }) => {
+            const isActive = value === item.value;
+            return (
+              <Pressable style={[styles.chip, isActive && styles.chipActive]} onPress={() => onChange(item.value)}>
+                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>{item.label}</Text>
+              </Pressable>
+            );
+          }}
+        />
+      )}
+    </View>
   );
 }
 
@@ -97,7 +125,7 @@ function Pagination({ page, totalPages, onChangePage, disabled }) {
   return (
     <View style={styles.pagination}>
       <Pressable style={[styles.pageArrow, (page <= 1 || disabled) && styles.pageButtonDisabled]} onPress={() => onChangePage(page - 1)} disabled={page <= 1 || disabled}>
-        <Ionicons name="chevron-back" size={16} color={page <= 1 ? COLORS.textFaint : COLORS.text} />
+        <Ionicons name="chevron-back" size={20} color={page <= 1 ? COLORS.textFaint : COLORS.text} />
       </Pressable>
       {start > 1 && (
         <>
@@ -117,7 +145,7 @@ function Pagination({ page, totalPages, onChangePage, disabled }) {
         </>
       )}
       <Pressable style={[styles.pageArrow, (page >= totalPages || disabled) && styles.pageButtonDisabled]} onPress={() => onChangePage(page + 1)} disabled={page >= totalPages || disabled}>
-        <Ionicons name="chevron-forward" size={16} color={page >= totalPages ? COLORS.textFaint : COLORS.text} />
+        <Ionicons name="chevron-forward" size={20} color={page >= totalPages ? COLORS.textFaint : COLORS.text} />
       </Pressable>
     </View>
   );
@@ -132,6 +160,7 @@ export default function CatalogScreen({ navigation, route }) {
   const [error, setError] = useState("");
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [expandedFilter, setExpandedFilter] = useState(null); // Menyimpan ID filter yang sedang dibuka
 
   const [searchInput, setSearchInput] = useState(route?.params?.search || "");
   const [filters, setFilters] = useState({
@@ -139,6 +168,7 @@ export default function CatalogScreen({ navigation, route }) {
     gender: route?.params?.gender || "",
     concentration: "",
     sort: "",
+    minRating: "",
   });
 
   useEffect(() => {
@@ -173,6 +203,7 @@ export default function CatalogScreen({ navigation, route }) {
         gender: filters.gender || undefined,
         concentration: filters.concentration || undefined,
         sort: filters.sort || undefined,
+        min_rating: filters.minRating || undefined,
       });
       setProducts(result.products);
       setPage(result.page);
@@ -196,85 +227,150 @@ export default function CatalogScreen({ navigation, route }) {
     loadPage(newPage);
   };
 
-  const updateFilter = (key, value) => setFilters((prev) => ({ ...prev, [key]: value }));
-  const handleCategoryChip = (value) => setSearchInput(value);
-  const clearFilters = () => {
-    setSearchInput("");
-    setFilters({ search: "", gender: "", concentration: "", sort: "" });
+  const updateFilter = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    // Opsional: Tutup filter setelah memilih
+    // setExpandedFilter(null);
   };
 
-  const hasActiveFilters = filters.search || filters.gender || filters.concentration || filters.sort;
+  const clearFilters = () => {
+    setSearchInput("");
+    setFilters({ search: "", gender: "", concentration: "", sort: "", minRating: "" });
+    setExpandedFilter(null);
+  };
+
+  const toggleFilter = (filterKey) => {
+    setExpandedFilter(expandedFilter === filterKey ? null : filterKey);
+  };
+
+  const hasActiveFilters = filters.gender || filters.concentration || filters.sort || filters.minRating;
   const displayData = products.length % 2 !== 0 ? [...products, { id: "__placeholder__", isPlaceholder: true }] : products;
 
-  return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Katalog Parfum</Text>
-        <Text style={styles.headerSubtitle}>{total} produk tersedia · Halaman {page} dari {totalPages}</Text>
-      </View>
+  const ListHeader = () => (
+    <View style={styles.filtersContainer}>
+      <CollapsibleFilterSection 
+        title="Urutkan" 
+        options={SORT_OPTIONS} 
+        value={filters.sort} 
+        onChange={(v) => updateFilter("sort", v)} 
+        isExpanded={expandedFilter === "sort"}
+        onToggle={() => toggleFilter("sort")}
+      />
+      <View style={styles.filterDivider} />
+      
+      {/* Jika kamu mencari berdasarkan searchInput alih-alih filter state, kamu mungkin perlu menyesuaikan props value/onChange di bawah */}
+      <CollapsibleFilterSection 
+        title="Aroma (Notes)" 
+        options={CATEGORY_OPTIONS} 
+        value={filters.search} // Di kode asli, ini menggunakan searchInput
+        onChange={(v) => setSearchInput(v)} 
+        isExpanded={expandedFilter === "notes"}
+        onToggle={() => toggleFilter("notes")}
+      />
+      <View style={styles.filterDivider} />
 
-      <View style={styles.searchBox}>
-        <Ionicons name="search" size={16} color={COLORS.textMuted} />
-        <AppTextInput
-          style={styles.searchInput}
-          value={searchInput}
-          onChangeText={setSearchInput}
-          placeholder="Cari parfum, brand, aroma..."
-        />
-        {!!searchInput && (
-          <Pressable onPress={() => setSearchInput("")}>
-            <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
-          </Pressable>
-        )}
-      </View>
+      <CollapsibleFilterSection 
+        title="Peruntukan (Gender)" 
+        options={GENDER_OPTIONS} 
+        value={filters.gender} 
+        onChange={(v) => updateFilter("gender", v)} 
+        isExpanded={expandedFilter === "gender"}
+        onToggle={() => toggleFilter("gender")}
+      />
+      <View style={styles.filterDivider} />
 
-      <View style={{ paddingLeft: SPACING.lg, marginTop: SPACING.sm }}>
-        <FilterChipGroup options={CATEGORY_OPTIONS} value={searchInput} onChange={handleCategoryChip} />
-      </View>
-      <View style={{ paddingLeft: SPACING.lg, marginTop: SPACING.sm }}>
-        <FilterChipGroup options={GENDER_OPTIONS} value={filters.gender} onChange={(v) => updateFilter("gender", v)} />
-      </View>
-      <View style={{ paddingLeft: SPACING.lg, marginTop: SPACING.sm }}>
-        <FilterChipGroup options={CONCENTRATION_OPTIONS} value={filters.concentration} onChange={(v) => updateFilter("concentration", v)} />
-      </View>
-      <View style={{ paddingLeft: SPACING.lg, marginTop: SPACING.sm, marginBottom: SPACING.sm }}>
-        <FilterChipGroup options={SORT_OPTIONS} value={filters.sort} onChange={(v) => updateFilter("sort", v)} />
-      </View>
+      <CollapsibleFilterSection 
+        title="Tipe Parfum" 
+        options={CONCENTRATION_OPTIONS} 
+        value={filters.concentration} 
+        onChange={(v) => updateFilter("concentration", v)} 
+        isExpanded={expandedFilter === "concentration"}
+        onToggle={() => toggleFilter("concentration")}
+      />
+      <View style={styles.filterDivider} />
+
+      <CollapsibleFilterSection 
+        title="Minimal Rating" 
+        options={RATING_OPTIONS} 
+        value={filters.minRating} 
+        onChange={(v) => updateFilter("minRating", v)} 
+        isExpanded={expandedFilter === "rating"}
+        onToggle={() => toggleFilter("rating")}
+      />
 
       {hasActiveFilters && (
         <Pressable style={styles.resetButton} onPress={clearFilters}>
-          <Ionicons name="refresh-circle" size={18} color={COLORS.primary} />
-          <Text style={styles.resetButtonText}>Reset Filter</Text>
+          <Ionicons name="refresh" size={16} color={COLORS.primary} />
+          <Text style={styles.resetButtonText}>Reset Semua Filter</Text>
         </Pressable>
       )}
+      <View style={styles.bottomHeaderSpacing} />
+    </View>
+  );
 
+  return (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {/* Sticky Header & Search */}
+      <View style={styles.stickyHeader}>
+        <View style={styles.headerTitleRow}>
+          <Text style={styles.headerTitle}>Katalog Parfum</Text>
+          <Text style={styles.headerSubtitle}>{total} produk tersedia</Text>
+        </View>
+
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={20} color={COLORS.textMuted} />
+          <AppTextInput
+            style={styles.searchInput}
+            value={searchInput}
+            onChangeText={setSearchInput}
+            placeholder="Cari parfum, brand, aroma..."
+          />
+          {!!searchInput && (
+            <Pressable onPress={() => setSearchInput("")} hitSlop={10}>
+              <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
+      {/* Main Content */}
       {isLoading && products.length === 0 ? (
         <View style={styles.centerContainer}><ActivityIndicator color={COLORS.primary} size="large" /></View>
       ) : error && products.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Ionicons name="cloud-offline-outline" size={40} color={COLORS.textFaint} />
-          <Text style={{ color: COLORS.textMuted, marginTop: 10, marginBottom: 12 }}>{error}</Text>
+          <Ionicons name="cloud-offline-outline" size={48} color={COLORS.textFaint} />
+          <Text style={styles.errorText}>{error}</Text>
           <Pressable style={styles.retryButton} onPress={() => loadPage(page)}><Text style={styles.retryButtonText}>Coba Lagi</Text></Pressable>
         </View>
       ) : products.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Text style={{ fontSize: 40 }}>🔍</Text>
-          <Text style={styles.emptyTitle}>Produk tidak ditemukan</Text>
-          <Text style={styles.emptySubtitle}>Coba ubah filter atau kata kunci pencarian</Text>
-          <Pressable style={styles.retryButton} onPress={clearFilters}><Text style={styles.retryButtonText}>Reset Filter</Text></Pressable>
-        </View>
+        <FlatList
+          key="list-empty"
+          data={[]}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="search-outline" size={48} color={COLORS.border} />
+              <Text style={styles.emptyTitle}>Produk tidak ditemukan</Text>
+              <Text style={styles.emptySubtitle}>Coba ubah filter atau kata kunci pencarian lainnya.</Text>
+              <Pressable style={styles.retryButton} onPress={clearFilters}><Text style={styles.retryButtonText}>Reset Filter</Text></Pressable>
+            </View>
+          }
+        />
       ) : (
         <FlatList
+          key="list-2-cols"
           data={displayData}
           keyExtractor={(item) => String(item.id)}
           numColumns={2}
-          columnWrapperStyle={{ gap: SPACING.md }}
-          contentContainerStyle={{ gap: SPACING.md, padding: SPACING.lg, paddingTop: SPACING.sm }}
+          columnWrapperStyle={styles.columnWrapper}
+          contentContainerStyle={styles.flatListContent}
           keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
+          ListHeaderComponent={ListHeader}
           renderItem={({ item }) =>
             item.isPlaceholder ? (
-              <View style={[styles.card, { backgroundColor: "transparent", borderWidth: 0 }]} />
+              <View style={[styles.card, { backgroundColor: "transparent", borderWidth: 0, elevation: 0 }]} />
             ) : (
               <ProductCard product={item} onPress={() => navigation.navigate("ProductDetail", { productId: item.id })} />
             )
@@ -289,37 +385,128 @@ export default function CatalogScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   centerContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: SPACING.xl },
-  header: { padding: SPACING.lg, paddingBottom: SPACING.sm },
-  headerTitle: { color: COLORS.text, fontSize: 22, fontWeight: "700" },
-  headerSubtitle: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  searchBox: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: SPACING.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: 14 },
-  searchInput: { flex: 1, backgroundColor: "transparent", borderWidth: 0, padding: 10, color: COLORS.text, fontSize: 13 },
-  chip: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.full, paddingVertical: 7, paddingHorizontal: 14 },
-  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { color: COLORS.textMuted, fontSize: 11 },
-  chipTextActive: { color: COLORS.text, fontWeight: "700" },
-  resetButton: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary, borderRadius: 20, paddingVertical: 7, paddingHorizontal: 14, marginLeft: SPACING.lg, marginTop: 8, marginBottom: 6 },
-  resetButtonText: { color: COLORS.primary, fontSize: 13, fontWeight: "700" },
-  emptyTitle: { color: COLORS.text, fontSize: 15, fontWeight: "600", marginTop: 12 },
-  emptySubtitle: { color: COLORS.textMuted, fontSize: 12, marginTop: 4, textAlign: "center" },
-  retryButton: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingVertical: 10, paddingHorizontal: 20, marginTop: 12 },
-  retryButtonText: { color: COLORS.primary, fontWeight: "600" },
-  card: { flex: 1, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border, ...CARD_SHADOW },
-  imagePlaceholder: { height: 120, backgroundColor: COLORS.surfaceLight, alignItems: "center", justifyContent: "center", width: "100%" },
-  cardInfo: { padding: SPACING.sm },
-  brand: { color: COLORS.textMuted, fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5 },
-  name: { color: COLORS.text, fontSize: 13, fontWeight: "600", marginTop: 3 },
-  category: { color: COLORS.textFaint, fontSize: 10, marginTop: 2 },
-  bottomRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
-  price: { color: COLORS.primary, fontSize: 13, fontWeight: "700" },
-  ratingRow: { flexDirection: "row", alignItems: "center", gap: 2 },
-  rating: { color: COLORS.textMuted, fontSize: 11 },
-  pagination: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: SPACING.sm, marginBottom: SPACING.lg },
-  pageArrow: { width: 32, height: 32, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" },
-  pageButton: { minWidth: 32, height: 32, paddingHorizontal: 6, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" },
+  
+  // Sticky Header
+  stickyHeader: {
+    backgroundColor: COLORS.background,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    zIndex: 10,
+  },
+  headerTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginBottom: SPACING.md },
+  headerTitle: { color: COLORS.text, fontSize: 24, fontWeight: "800" },
+  headerSubtitle: { color: COLORS.textMuted, fontSize: 13, marginBottom: 3 },
+  
+  // Search
+  searchBox: { 
+    flexDirection: "row", alignItems: "center", gap: 8, 
+    backgroundColor: COLORS.surface, 
+    borderWidth: 1, borderColor: COLORS.border, 
+    borderRadius: RADIUS.lg, 
+    paddingHorizontal: 16, paddingVertical: 4
+  },
+  searchInput: { flex: 1, backgroundColor: "transparent", borderWidth: 0, paddingVertical: 8, color: COLORS.text, fontSize: 14 },
+  
+  // Filters Header Area
+  filtersContainer: { backgroundColor: COLORS.surface, paddingBottom: SPACING.md },
+  bottomHeaderSpacing: { height: SPACING.lg, backgroundColor: COLORS.background, borderTopWidth: 1, borderTopColor: COLORS.border, marginTop: SPACING.md },
+  filterSection: { backgroundColor: COLORS.surface },
+  filterHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: SPACING.lg, 
+    paddingVertical: 14,
+  },
+  filterDivider: { height: 1, backgroundColor: COLORS.border, marginHorizontal: SPACING.lg },
+  filterTitle: { color: COLORS.text, fontSize: 13, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.primary },
+  
+  chip: { 
+    backgroundColor: COLORS.background, 
+    borderWidth: 1, borderColor: COLORS.border, 
+    borderRadius: RADIUS.full, 
+    paddingVertical: 8, paddingHorizontal: 16 
+  },
+  chipActive: { backgroundColor: `${COLORS.primary}15`, borderColor: COLORS.primary },
+  chipText: { color: COLORS.textMuted, fontSize: 12, fontWeight: "500" },
+  chipTextActive: { color: COLORS.primary, fontWeight: "700" },
+  
+  resetButton: { 
+    flexDirection: "row", alignItems: "center", gap: 6, 
+    alignSelf: "center", 
+    backgroundColor: COLORS.background, 
+    borderWidth: 1, borderColor: COLORS.primary, 
+    borderRadius: RADIUS.full, 
+    paddingVertical: 10, paddingHorizontal: 20, 
+    marginTop: SPACING.md
+  },
+  resetButtonText: { color: COLORS.primary, fontSize: 12, fontWeight: "700" },
+  
+  // Empty & Error States
+  emptyContainer: { alignItems: "center", justifyContent: "center", padding: SPACING.xl, marginTop: 40 },
+  emptyTitle: { color: COLORS.text, fontSize: 16, fontWeight: "700", marginTop: 16 },
+  emptySubtitle: { color: COLORS.textMuted, fontSize: 13, marginTop: 6, textAlign: "center", lineHeight: 20 },
+  errorText: { color: COLORS.textMuted, fontSize: 14, marginTop: 12, marginBottom: 16, textAlign: "center" },
+  retryButton: { 
+    backgroundColor: COLORS.surface, 
+    borderWidth: 1, borderColor: COLORS.border, 
+    borderRadius: RADIUS.md, 
+    paddingVertical: 12, paddingHorizontal: 24, 
+    marginTop: 16 
+  },
+  retryButtonText: { color: COLORS.primary, fontWeight: "700", fontSize: 14 },
+  
+  // Product List
+  flatListContent: { paddingBottom: SPACING.xl },
+  columnWrapper: { gap: SPACING.md, paddingHorizontal: SPACING.lg },
+  
+  // Product Card
+  card: { 
+    flex: 1, 
+    backgroundColor: COLORS.surface, 
+    borderRadius: RADIUS.lg, 
+    overflow: "hidden", 
+    borderWidth: 1, borderColor: COLORS.border, 
+    ...CARD_SHADOW,
+    marginBottom: SPACING.md
+  },
+  imagePlaceholder: { height: 160, backgroundColor: COLORS.surfaceLight, alignItems: "center", justifyContent: "center", width: "100%" },
+  cardInfo: { padding: 12 },
+  brand: { color: COLORS.textMuted, fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: "600" },
+  name: { color: COLORS.text, fontSize: 14, fontWeight: "700", marginTop: 4, lineHeight: 18 },
+  category: { color: COLORS.textFaint, fontSize: 11, marginTop: 2 },
+  
+  ratingLine: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 3 },
+  ratingLineText: { color: COLORS.textMuted, fontSize: 10 },
+
+  bottomRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12 },
+  price: { color: COLORS.primary, fontSize: 14, fontWeight: "800" },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  rating: { color: COLORS.textMuted, fontSize: 11, fontWeight: "500" },
+  
+  // Pagination
+  pagination: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: SPACING.xl },
+  pageArrow: { 
+    width: 40, height: 40, 
+    borderRadius: RADIUS.md, 
+    borderWidth: 1, borderColor: COLORS.border, 
+    backgroundColor: COLORS.surface,
+    alignItems: "center", justifyContent: "center" 
+  },
+  pageButton: { 
+    minWidth: 40, height: 40, paddingHorizontal: 10, 
+    borderRadius: RADIUS.md, 
+    borderWidth: 1, borderColor: COLORS.border, 
+    backgroundColor: COLORS.surface,
+    alignItems: "center", justifyContent: "center" 
+  },
   pageButtonActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  pageButtonDisabled: { opacity: 0.4 },
-  pageButtonText: { color: COLORS.text, fontSize: 13, fontWeight: "500" },
-  pageButtonTextActive: { color: COLORS.text, fontWeight: "700" },
-  pageEllipsis: { color: COLORS.textMuted, fontSize: 13, marginHorizontal: 2 },
+  pageButtonDisabled: { opacity: 0.3 },
+  pageButtonText: { color: COLORS.text, fontSize: 14, fontWeight: "600" },
+  pageButtonTextActive: { color: COLORS.text, fontWeight: "800" },
+  pageEllipsis: { color: COLORS.textMuted, fontSize: 14, marginHorizontal: 4, fontWeight: "700" },
 });

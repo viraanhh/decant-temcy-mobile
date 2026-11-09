@@ -4,7 +4,7 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, Modal, 
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { SPACING, RADIUS, CARD_SHADOW } from "../../constants/theme";
-import { getAdminReviews } from "../../services/adminService";
+import { getAdminReviews, deleteAdminReview } from "../../services/adminService";
 import AppTextInput from "../../components/AppTextInput";
 
 const FETCH_LIMIT = 200;
@@ -33,6 +33,25 @@ export default function AdminReviewListScreen() {
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [isTimeModalVisible, setTimeModalVisible] = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    setDeleteError("");
+    try {
+      await deleteAdminReview(deleteTarget.review_id);
+      setReviews((prev) => prev.filter((r) => r.review_id !== deleteTarget.review_id));
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(err?.message || "Ulasan belum bisa dihapus, coba lagi.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const fetchReviews = () => {
     setIsLoading(true);
@@ -141,6 +160,10 @@ export default function AdminReviewListScreen() {
               <Text style={styles.comment}>{item.comment}</Text>
 
               <View style={styles.cardFooter}>
+                <Pressable style={styles.deleteButton} onPress={() => { setDeleteError(""); setDeleteTarget(item); }} hitSlop={8}>
+                  <Ionicons name="trash-outline" size={14} color="#FF4B4B" />
+                  <Text style={styles.deleteText}>Hapus</Text>
+                </Pressable>
                 <Text style={styles.date}>{new Date(item.createdAt || item.created_at).toLocaleDateString("id-ID")}</Text>
               </View>
             </View>
@@ -190,6 +213,29 @@ export default function AdminReviewListScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal visible={!!deleteTarget} animationType="fade" transparent onRequestClose={() => setDeleteTarget(null)}>
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialogCard}>
+            <View style={styles.dialogIcon}>
+              <Ionicons name="trash-outline" size={30} color="#FF4B4B" />
+            </View>
+            <Text style={styles.dialogTitle}>Hapus ulasan?</Text>
+            <Text style={styles.dialogText}>
+              Ulasan dari {deleteTarget?.user?.full_name || "pengguna"} untuk {deleteTarget?.product?.product_name || "produk ini"} tidak akan tampil lagi di aplikasi.
+            </Text>
+            {!!deleteError && <Text style={styles.dialogError}>{deleteError}</Text>}
+            <View style={styles.dialogActions}>
+              <Pressable style={[styles.dialogButton, styles.dialogCancel]} onPress={() => setDeleteTarget(null)} disabled={isDeleting}>
+                <Text style={styles.dialogCancelText}>Batal</Text>
+              </Pressable>
+              <Pressable style={[styles.dialogButton, { backgroundColor: "#FF4B4B" }]} onPress={handleDelete} disabled={isDeleting}>
+                {isDeleting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.dialogConfirmText}>Ya, Hapus</Text>}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -215,7 +261,7 @@ const styles = StyleSheet.create({
   productName: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
   comment: { color: COLORS.text, fontSize: 13, marginTop: 6, lineHeight: 18 },
 
-  cardFooter: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
+  cardFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
   date: { color: COLORS.textFaint, fontSize: 10 },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end", padding: SPACING.xl },
@@ -227,5 +273,19 @@ const styles = StyleSheet.create({
   timeOptionText: { color: COLORS.text, fontSize: 14 },
   timeOptionTextActive: { color: COLORS.primary, fontWeight: "700" },
   applyButton: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, padding: 14, alignItems: "center", marginTop: SPACING.md },
-  applyButtonText: { color: COLORS.text, fontWeight: "600" }
+  applyButtonText: { color: COLORS.text, fontWeight: "600" },
+
+  deleteButton: { flexDirection: "row", alignItems: "center", gap: 5 },
+  deleteText: { color: "#FF4B4B", fontSize: 12, fontWeight: "700" },
+  dialogOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: SPACING.lg },
+  dialogCard: { backgroundColor: COLORS.surface, borderRadius: 24, padding: 24, width: "100%", maxWidth: 340, alignItems: "center", elevation: 8 },
+  dialogIcon: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#FF4B4B18", justifyContent: "center", alignItems: "center", marginBottom: 16 },
+  dialogTitle: { color: COLORS.text, fontSize: 18, fontWeight: "700", marginBottom: 8, textAlign: "center" },
+  dialogText: { color: COLORS.textMuted, fontSize: 14, textAlign: "center", marginBottom: 16, lineHeight: 22 },
+  dialogError: { color: "#FF4B4B", fontSize: 12, textAlign: "center", marginBottom: 12 },
+  dialogActions: { flexDirection: "row", gap: 12, width: "100%" },
+  dialogButton: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  dialogCancel: { backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
+  dialogCancelText: { color: COLORS.text, fontWeight: "600", fontSize: 14 },
+  dialogConfirmText: { color: "#fff", fontWeight: "600", fontSize: 14 },
 });

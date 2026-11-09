@@ -36,3 +36,9 @@ export async function submitReview({ productId, rating, comment }) {
 
   return response.data;
 }
+
+// GET /api/reviews/can-review/:productId -> { can_review, has_bought, has_reviewed }
+export async function getCanReview(productId) {
+  const response = await apiClient.get(`/reviews/can-review/${productId}`);
+  return response.data;
+}

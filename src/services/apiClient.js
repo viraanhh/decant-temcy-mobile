@@ -17,4 +17,19 @@ apiClient.interceptors.request.use(async (config) => {
   return config;
 });
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      const serverMessage = error.response.data?.message;
+      if (serverMessage) error.message = serverMessage;
+    } else if (error.code === "ECONNABORTED") {
+      error.message = "Koneksi timeout, coba lagi";
+    } else {
+      error.message = "Tidak dapat terhubung ke server. Periksa koneksi Anda";
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default apiClient;

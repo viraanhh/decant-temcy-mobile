@@ -15,23 +15,26 @@ const EXPEDITION_COURIERS = [
 ];
 
 export default function CheckoutShippingScreen({ route, navigation }) {
-  const { deliveryMethod, address } = route.params;
+  const { deliveryMethod, address, store, selectedIds } = route.params;
 
-  const [shippingChoice, setShippingChoice] = useState(deliveryMethod === "pickup" ? "pickup" : null);
   const [expeditionCourier, setExpeditionCourier] = useState(null);
   const [expeditionOptions, setExpeditionOptions] = useState([]);
   const [isLoadingCost, setIsLoadingCost] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
+  const [costError, setCostError] = useState("");
 
   const handlePickCourier = async (courier) => {
     setExpeditionCourier(courier);
     setSelectedService(null);
+    setCostError("");
     setIsLoadingCost(true);
     try {
       const costs = await getShippingCost(address.cityId, 50, courier.value);
       setExpeditionOptions(costs);
+      if (!costs || costs.length === 0) setCostError("Layanan ekspedisi ini belum tersedia untuk alamatmu.");
     } catch (err) {
       setExpeditionOptions([]);
+      setCostError("Tarif belum bisa dimuat, coba pilih ekspedisi lain atau ulangi sebentar lagi.");
     } finally {
       setIsLoadingCost(false);
     }
@@ -40,9 +43,13 @@ export default function CheckoutShippingScreen({ route, navigation }) {
   const handleContinue = () => {
     let shipping;
     if (deliveryMethod === "pickup") {
-      shipping = { deliveryMethod: "pickup", courier: null, courierService: null, cost: 0, label: "Ambil di Toko" };
-    } else if (shippingChoice === "cod") {
-      shipping = { deliveryMethod: "delivery", courier: "cod", courierService: "COD", cost: 0, label: "Diantar Langsung (COD)" };
+      shipping = {
+        deliveryMethod: "pickup",
+        courier: null,
+        courierService: null,
+        cost: 0,
+        label: `Ambil di Toko · ${store?.name || ""}`,
+      };
     } else {
       shipping = {
         deliveryMethod: "delivery",
@@ -53,13 +60,10 @@ export default function CheckoutShippingScreen({ route, navigation }) {
         etd: selectedService.cost[0].etd,
       };
     }
-    navigation.navigate("CheckoutReview", { deliveryMethod, address, shipping });
+    navigation.navigate("CheckoutReview", { deliveryMethod, address, store, shipping, selectedIds });
   };
 
-  const canContinue =
-    deliveryMethod === "pickup" ||
-    shippingChoice === "cod" ||
-    (shippingChoice === "expedition" && selectedService);
+  const canContinue = deliveryMethod === "pickup" ? !!store : !!selectedService;
 
   return (
     <View style={styles.container}>
@@ -68,22 +72,13 @@ export default function CheckoutShippingScreen({ route, navigation }) {
 
         {deliveryMethod === "delivery" && (
           <>
-            <Pressable
-              style={[styles.optionCard, shippingChoice === "cod" && styles.optionCardActive]}
-              onPress={() => setShippingChoice("cod")}
-            >
-              <Text style={styles.optionLabel}>Diantar Langsung</Text>
-              <Text style={styles.optionNote}>Kurir toko, area Semarang saja</Text>
-              <Text style={styles.optionCost}>Gratis</Text>
-            </Pressable>
-
-            <Text style={styles.sectionLabel}>Atau Pilih Ekspedisi</Text>
+            <Text style={styles.sectionLabel}>Pilih Ekspedisi</Text>
             <View style={styles.courierRow}>
               {EXPEDITION_COURIERS.map((c) => (
                 <Pressable
                   key={c.value}
                   style={[styles.courierChip, expeditionCourier?.value === c.value && styles.courierChipActive]}
-                  onPress={() => { setShippingChoice("expedition"); handlePickCourier(c); }}
+                  onPress={() => handlePickCourier(c)}
                 >
                   <Text style={[styles.courierChipText, expeditionCourier?.value === c.value && styles.courierChipTextActive]}>
                     {c.label}
@@ -93,6 +88,7 @@ export default function CheckoutShippingScreen({ route, navigation }) {
             </View>
 
             {isLoadingCost && <ActivityIndicator color={COLORS.primary} style={{ marginTop: 10 }} />}
+            {!!costError && !isLoadingCost && <Text style={styles.costError}>{costError}</Text>}
 
             {!isLoadingCost && expeditionOptions.map((opt) => (
               <Pressable
@@ -109,8 +105,9 @@ export default function CheckoutShippingScreen({ route, navigation }) {
         )}
 
         {deliveryMethod === "pickup" && (
-          <View style={styles.optionCard}>
-            <Text style={styles.optionLabel}>Ambil di Toko — Semarang</Text>
+          <View style={[styles.optionCard, styles.optionCardActive]}>
+            <Text style={styles.optionLabel}>Ambil di Toko · {store?.name}</Text>
+            <Text style={styles.optionNote}>{store?.address}, {store?.city}</Text>
             <Text style={styles.optionCost}>Gratis</Text>
           </View>
         )}
@@ -138,6 +135,7 @@ const styles = StyleSheet.create({
   courierChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   courierChipText: { color: COLORS.textMuted, fontSize: 12 },
   courierChipTextActive: { color: COLORS.text, fontWeight: "600" },
+  costError: { color: COLORS.textMuted, fontSize: 12, marginTop: 6, lineHeight: 17 },
   optionCard: { backgroundColor: COLORS.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: COLORS.border },
   optionCardActive: { borderColor: COLORS.primary },
   optionLabel: { color: COLORS.text, fontWeight: "600", fontSize: 14 },

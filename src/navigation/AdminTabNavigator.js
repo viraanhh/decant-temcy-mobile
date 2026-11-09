@@ -3,7 +3,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 
-// Import Screens
 import AdminDashboardScreen from "../screens/admin/AdminDashboardScreen";
 import AdminProductListScreen from "../screens/admin/AdminProductListScreen";
 import AdminProductFormScreen from "../screens/admin/AdminProductFormScreen";
@@ -13,8 +12,11 @@ import AdminMoreScreen from "../screens/admin/AdminMoreScreen";
 import AdminReviewListScreen from "../screens/admin/AdminReviewListScreen";
 import AdminVoucherListScreen from "../screens/admin/AdminVoucherListScreen";
 import AdminVoucherFormScreen from "../screens/admin/AdminVoucherFormScreen";
-import AdminUserListScreen from "../screens/admin/AdminUserListScreen";
 import AdminSalesReportScreen from "../screens/admin/AdminSalesReportScreen";
+import AdminInventoryScreen from "../screens/admin/AdminInventoryScreen";
+import AdminStoreListScreen from "../screens/admin/AdminStoreListScreen";
+import AdminStoreFormScreen from "../screens/admin/AdminStoreFormScreen";
+import AdminAIInsightScreen from "../screens/admin/AdminAIInsightScreen";
 
 const Tab = createBottomTabNavigator();
 const ProductStack = createNativeStackNavigator();
@@ -25,7 +27,7 @@ const stackScreenOptions = {
   headerStyle: { backgroundColor: COLORS.surface },
   headerTintColor: COLORS.text,
   contentStyle: { backgroundColor: COLORS.background },
-  animation: "slide_from_right", // <-- DITAMBAHKAN
+  animation: "slide_from_right",
 };
 
 function ProductStackNavigator() {
@@ -53,8 +55,11 @@ function MoreStackNavigator() {
       <MoreStack.Screen name="AdminReviews" component={AdminReviewListScreen} options={{ title: "Review" }} />
       <MoreStack.Screen name="AdminVouchers" component={AdminVoucherListScreen} options={{ title: "Kelola Voucher" }} />
       <MoreStack.Screen name="AdminVoucherForm" component={AdminVoucherFormScreen} options={{ title: "Form Voucher" }} />
-      <MoreStack.Screen name="AdminUsers" component={AdminUserListScreen} options={{ title: "Kelola Users" }} />
       <MoreStack.Screen name="AdminSalesReport" component={AdminSalesReportScreen} options={{ title: "Laporan Penjualan" }} />
+      <MoreStack.Screen name="AdminInventory" component={AdminInventoryScreen} options={{ title: "Inventori" }} />
+      <MoreStack.Screen name="AdminStores" component={AdminStoreListScreen} options={{ title: "Cabang Toko" }} />
+      <MoreStack.Screen name="AdminStoreForm" component={AdminStoreFormScreen} options={{ title: "Form Store" }} />
+      <MoreStack.Screen name="AdminAIInsight" component={AdminAIInsightScreen} options={{ title: "AI Insight" }} />
     </MoreStack.Navigator>
   );
 }

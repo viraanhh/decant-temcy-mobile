@@ -1,4 +1,4 @@
-import { View, Image } from "react-native"; // <-- DITAMBAHKAN
+import { View, Image } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { COLORS } from "../constants/colors";
 import { useAuth } from "../context/AuthContext";
@@ -20,9 +20,11 @@ import AddressBookScreen from "../screens/AddressBookScreen";
 import AboutScreen from "../screens/AboutScreen";
 import AccountSettingsScreen from "../screens/AccountSettingsScreen";
 import PreferenceOnboardingScreen from "../screens/PreferenceOnboardingScreen";
-import GoogleLoginScreen from "../screens/GoogleLoginScreen";
 import AddAddressScreen from "../screens/AddAddressScreen";
 import AdminTabNavigator from "./AdminTabNavigator";
+import SysAdminTabNavigator from "./SysAdminTabNavigator";
+import ForgotPasswordScreen from "../screens/ForgotPasswordScreen";
+import ResetPasswordScreen from "../screens/ResetPasswordScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -41,7 +43,7 @@ export default function RootNavigator() {
     );
   }
 
-  const initialRouteName = user?.role === "admin" ? "AdminTabs" : "MainTabs";
+  const initialRouteName = user?.role === "sysadmin" ? "SysAdminTabs" : user?.role === "admin" ? "AdminTabs" : "MainTabs";
 
   return (
     <Stack.Navigator
@@ -56,7 +58,10 @@ export default function RootNavigator() {
     >
       <Stack.Screen name="MainTabs" component={BottomTabNavigator} options={{ headerShown: false }} />
       <Stack.Screen name="AdminTabs" component={AdminTabNavigator} options={{ headerShown: false }} />
+      <Stack.Screen name="SysAdminTabs" component={SysAdminTabNavigator} options={{ headerShown: false }} />
       <Stack.Screen name="Login" component={LoginScreen} options={{ title: "Masuk" }} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: "Lupa Password" }} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: "Reset Password" }} />
       <Stack.Screen name="Register" component={RegisterScreen} options={{ title: "Daftar" }} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} options={{ title: "Detail Produk" }} />
       <Stack.Screen name="Checkout" component={CheckoutNavigator} options={{ headerShown: false }} />
@@ -72,7 +77,6 @@ export default function RootNavigator() {
       <Stack.Screen name="About" component={AboutScreen} options={{ title: "Tentang Kami" }} />
       <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} options={{ title: "Akun Saya" }} />
       <Stack.Screen name="PreferenceOnboarding" component={PreferenceOnboardingScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="GoogleLogin" component={GoogleLoginScreen} options={{ title: "Masuk dengan Google" }} />
       <Stack.Screen name="AddAddress" component={AddAddressScreen} options={{ title: "Tambah Alamat" }} />
     </Stack.Navigator>
   );

@@ -6,10 +6,12 @@ import { SPACING, RADIUS, CARD_SHADOW } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
 
 const MENU_ITEMS = [
-  { icon: "people-outline", label: "Kelola Users", route: "AdminUsers" },
+  { icon: "cube-outline", label: "Inventori", route: "AdminInventory" },
+  { icon: "bar-chart-outline", label: "Laporan Penjualan", route: "AdminSalesReport" },
+  { icon: "storefront-outline", label: "Cabang Toko", route: "AdminStores" },
   { icon: "star-outline", label: "Review", route: "AdminReviews" },
   { icon: "pricetag-outline", label: "Voucher", route: "AdminVouchers" },
-  { icon: "bar-chart-outline", label: "Laporan Penjualan", route: "AdminSalesReport" },
+  { icon: "sparkles-outline", label: "AI Insight", route: "AdminAIInsight" },
 ];
 
 export default function AdminMoreScreen({ navigation }) {

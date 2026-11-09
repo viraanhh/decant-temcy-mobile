@@ -23,6 +23,7 @@ export async function searchProductByImage(imageUri) {
 
   const response = await apiClient.post("/cv/scan", formData, {
     headers: { "Content-Type": "multipart/form-data" },
+    timeout: 130000,
   });
 
   const { recognizedText, matchedProduct, recommendations = [], message } = response.data;

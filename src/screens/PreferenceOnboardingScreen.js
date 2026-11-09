@@ -41,7 +41,11 @@ export default function PreferenceOnboardingScreen({ navigation }) {
   // "customer", tidak pernah "admin" lewat pendaftaran publik). Tapi tetap
   // ikut pola cek role yang sama seperti Login/GoogleLogin untuk konsistensi
   // & jaga-jaga kalau suatu saat alur ini berubah.
-  const finish = () => navigation.replace(user?.role === "admin" ? "AdminTabs" : "MainTabs");
+  const finish = () => {
+    const role = user?.role;
+    const target = role === "sysadmin" ? "SysAdminTabs" : role === "admin" ? "AdminTabs" : "MainTabs";
+    navigation.replace(target);
+  };
 
   const handleSave = async () => {
     setIsSaving(true);

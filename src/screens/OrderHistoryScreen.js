@@ -19,17 +19,22 @@ const formatDateInput = (text) => {
   return formatted;
 };
 
-const FILTER_GROUPS = {
-  pending: ["pending"],
-  active: ["paid", "processing", "shipped"],
-  delivered: ["delivered"],
-};
+// Fungsi helper penampil status dinamis (mendukung label "Siap Diambil" untuk pickup)
+function getHistoryOrderStatusLabel(order) {
+  if (order.deliveryMethod === "pickup" && order.status === "shipped") {
+    return { text: "Siap Diambil", color: "primary" };
+  }
+  return ORDER_STATUS_LABEL[order.status] || { text: order.status, color: "textMuted" };
+}
 
 const FILTER_OPTIONS = [
   { value: "", label: "Semua" },
-  { value: "pending", label: "Belum Bayar" },
-  { value: "active", label: "Diproses" },
+  { value: "pending", label: "Menunggu" },
+  { value: "paid", label: "Dibayar" },
+  { value: "processing", label: "Diproses" },
+  { value: "shipped", label: "Dikirim" },
   { value: "delivered", label: "Selesai" },
+  { value: "cancelled", label: "Dibatalkan" },
 ];
 
 const TIME_FILTERS = [
@@ -37,14 +42,17 @@ const TIME_FILTERS = [
   { value: "today", label: "Hari Ini" },
   { value: "week", label: "7 Hari Terakhir" },
   { value: "month", label: "Bulan Ini" },
-  { value: "custom", label: "Rentang Tanggal Custom" },
+  { value: "custom", label: "Pilih Tanggal Manual" },
 ];
 
 const TAB_COLORS = {
   "": COLORS.primary,
   "pending": "#E8A33D", 
-  "active": "#4A90D9",  
+  "paid": "#4A90D9",  
+  "processing": "#4A90D9",
+  "shipped": "#9333EA",
   "delivered": "#3DBA6C", 
+  "cancelled": COLORS.textFaint,
 };
 
 export default function OrderHistoryScreen({ navigation }) {
@@ -85,7 +93,7 @@ export default function OrderHistoryScreen({ navigation }) {
   };
 
   const displayedOrders = orders.filter((o) => {
-    const matchesStatus = filterStatus ? FILTER_GROUPS[filterStatus]?.includes(o.status) : true;
+    const matchesStatus = filterStatus ? o.status === filterStatus : true;
     if (!matchesStatus) return false;
 
     const orderDateStr = o.createdAt || o.created_at;
@@ -115,29 +123,35 @@ export default function OrderHistoryScreen({ navigation }) {
       : TIME_FILTERS.find((t) => t.value === timeFilter)?.label || "Waktu";
 
   const FilterRow = (
-    <View style={styles.filterRow}>
-      {FILTER_OPTIONS.map((item) => {
-        const isActive = filterStatus === item.value;
-        const activeColor = TAB_COLORS[item.value] || COLORS.primary;
+    <View style={styles.filterWrapper}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        contentContainerStyle={styles.filterScrollContainer}
+      >
+        {FILTER_OPTIONS.map((item) => {
+          const isActive = filterStatus === item.value;
+          const activeColor = TAB_COLORS[item.value] || COLORS.primary;
 
-        return (
-          <Pressable
-            key={item.value}
-            style={[
-              styles.filterChip, 
-              isActive && { borderColor: activeColor, backgroundColor: `${activeColor}15` }
-            ]}
-            onPress={() => setFilterStatus(item.value)}
-          >
-            <Text style={[
-              styles.filterChipText, 
-              isActive && { color: activeColor, fontWeight: "700" }
-            ]}>
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+          return (
+            <Pressable
+              key={item.value}
+              style={[
+                styles.filterChip, 
+                isActive && { borderColor: activeColor, backgroundColor: `${activeColor}15` }
+              ]}
+              onPress={() => setFilterStatus(item.value)}
+            >
+              <Text style={[
+                styles.filterChipText, 
+                isActive && { color: activeColor, fontWeight: "700" }
+              ]}>
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 
@@ -145,6 +159,7 @@ export default function OrderHistoryScreen({ navigation }) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator color={COLORS.primary} size="large" />
+        <Text style={styles.loadingText}>Memuat riwayat...</Text>
       </View>
     );
   }
@@ -153,7 +168,8 @@ export default function OrderHistoryScreen({ navigation }) {
     return (
       <ScrollView contentContainerStyle={{ flex: 1 }} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}>
         <View style={styles.centerContainer}>
-          <Text style={{ color: COLORS.textMuted }}>{error}</Text>
+          <Ionicons name="alert-circle-outline" size={48} color={COLORS.textMuted} />
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       </ScrollView>
     );
@@ -163,8 +179,9 @@ export default function OrderHistoryScreen({ navigation }) {
     return (
       <ScrollView contentContainerStyle={{ flex: 1 }} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}>
         <View style={styles.centerContainer}>
-          <Text style={{ fontSize: 40 }}>📦</Text>
+          <Ionicons name="cart-outline" size={64} color={COLORS.border} />
           <Text style={styles.emptyTitle}>Belum Ada Pesanan</Text>
+          <Text style={styles.emptySubtitle}>Ayo mulai belanja dan temukan parfum favoritmu!</Text>
         </View>
       </ScrollView>
     );
@@ -175,9 +192,9 @@ export default function OrderHistoryScreen({ navigation }) {
       <View style={styles.headerContainer}>
         <Text style={styles.header}>Riwayat Pesanan</Text>
         <Pressable style={styles.timeFilterButton} onPress={() => setTimeModalVisible(true)}>
-          <Ionicons name="calendar-outline" size={14} color={COLORS.text} />
+          <Ionicons name="calendar-outline" size={16} color={COLORS.text} />
           <Text style={styles.timeFilterButtonText} numberOfLines={1}>{activeTimeLabel}</Text>
-          <Ionicons name="chevron-down" size={12} color={COLORS.textMuted} />
+          <Ionicons name="chevron-down" size={14} color={COLORS.textMuted} />
         </Pressable>
       </View>
       
@@ -186,76 +203,110 @@ export default function OrderHistoryScreen({ navigation }) {
       {displayedOrders.length === 0 ? (
         <ScrollView contentContainerStyle={{ flex: 1 }} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}>
           <View style={styles.centerContainer}>
-            <Text style={{ color: COLORS.textMuted }}>Tidak ada pesanan dengan filter ini.</Text>
+            <Ionicons name="search-outline" size={48} color={COLORS.border} />
+            <Text style={styles.emptyTitle}>Tidak Ada Pesanan</Text>
+            <Text style={styles.emptySubtitle}>Tidak ada pesanan yang sesuai dengan filter ini.</Text>
           </View>
         </ScrollView>
       ) : (
         <FlatList
           data={displayedOrders}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ padding: 16, gap: 10, paddingTop: 4 }}
+          contentContainerStyle={styles.listContainer}
           refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
           renderItem={({ item }) => {
-            const status = ORDER_STATUS_LABEL[item.status] || { text: item.status, color: "textMuted" };
+            const status = getHistoryOrderStatusLabel(item);
             const statusColor = COLORS[status.color] || COLORS.textMuted;
             const dateStr = item.createdAt || item.created_at;
-            const formattedDate = dateStr ? new Date(dateStr).toLocaleDateString("id-ID") : "";
+            const formattedDate = dateStr ? new Date(dateStr).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' }) : "";
 
             return (
               <Pressable style={styles.orderCard} onPress={() => navigation.navigate("OrderDetail", { orderId: item.id })}>
                 <View style={styles.orderHeader}>
-                  <View>
-                    <Text style={styles.orderNumber}>{item.orderNumber}</Text>
-                    {!!formattedDate && <Text style={styles.orderDate}>{formattedDate}</Text>}
+                  <View style={styles.headerLeft}>
+                    <Ionicons name="receipt-outline" size={18} color={COLORS.textMuted} />
+                    <View>
+                      <Text style={styles.orderNumber}>{item.orderNumber}</Text>
+                      {!!formattedDate && <Text style={styles.orderDate}>{formattedDate}</Text>}
+                    </View>
                   </View>
-                  <Text style={[styles.statusBadge, { color: statusColor, borderColor: statusColor }]}>{status.text}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15` }]}>
+                    <Text style={[styles.statusText, { color: statusColor }]}>{status.text}</Text>
+                  </View>
                 </View>
-                <Text style={styles.orderItems}>{item.items.length} produk · {item.items.map((i) => i.productName).join(", ")}</Text>
-                <Text style={styles.orderTotal}>{formatRupiah(item.total)}</Text>
+                
+                <View style={styles.divider} />
+
+                <View style={styles.orderBody}>
+                  <Ionicons name="cube-outline" size={20} color={COLORS.primary} style={{ marginTop: 2 }} />
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.orderItemsTitle} numberOfLines={2}>
+                      {item.items.map((i) => i.productName).join(", ")}
+                    </Text>
+                    <Text style={styles.orderItemsCount}>
+                      {item.items.reduce((acc, curr) => acc + (curr.quantity || 1), 0)} Produk
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.orderFooter}>
+                  <Text style={styles.footerLabel}>Total Belanja</Text>
+                  <Text style={styles.orderTotal}>{formatRupiah(item.total)}</Text>
+                </View>
               </Pressable>
             );
           }}
         />
       )}
 
+      {/* MODAL FILTER WAKTU */}
       <Modal visible={isTimeModalVisible} animationType="fade" transparent>
         <Pressable style={styles.modalOverlay} onPress={() => setTimeModalVisible(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.modalTitle}>Filter Berdasarkan Waktu</Text>
+            
             {TIME_FILTERS.map((opt) => (
               <Pressable key={opt.value} style={styles.timeOptionRow} onPress={() => setTimeFilter(opt.value)}>
                 <Text style={[styles.timeOptionText, timeFilter === opt.value && styles.timeOptionTextActive]}>
                   {opt.label}
                 </Text>
-                {timeFilter === opt.value && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+                {timeFilter === opt.value ? (
+                  <Ionicons name="radio-button-on" size={22} color={COLORS.primary} />
+                ) : (
+                  <Ionicons name="radio-button-off" size={22} color={COLORS.border} />
+                )}
               </Pressable>
             ))}
 
             {timeFilter === "custom" && (
-              <View style={{ marginTop: SPACING.sm, gap: 8 }}>
-                <Text style={styles.modalLabel}>Dari Tanggal (DD/MM/YYYY)</Text>
-                <AppTextInput 
-                  style={styles.dateInput} 
-                  value={customStart} 
-                  onChangeText={(text) => setCustomStart(formatDateInput(text))} 
-                  placeholder="01/09/2026" 
-                  keyboardType="number-pad"
-                  maxLength={10}
-                />
-                <Text style={styles.modalLabel}>Sampai Tanggal (DD/MM/YYYY)</Text>
-                <AppTextInput 
-                  style={styles.dateInput} 
-                  value={customEnd} 
-                  onChangeText={(text) => setCustomEnd(formatDateInput(text))} 
-                  placeholder="30/09/2026" 
-                  keyboardType="number-pad"
-                  maxLength={10}
-                />
+              <View style={styles.customDateContainer}>
+                <View style={styles.dateInputWrapper}>
+                  <Text style={styles.modalLabel}>Dari Tanggal</Text>
+                  <AppTextInput 
+                    style={styles.dateInput} 
+                    value={customStart} 
+                    onChangeText={(text) => setCustomStart(formatDateInput(text))} 
+                    placeholder="DD/MM/YYYY" 
+                    keyboardType="number-pad"
+                    maxLength={10}
+                  />
+                </View>
+                <View style={styles.dateInputWrapper}>
+                  <Text style={styles.modalLabel}>Sampai Tanggal</Text>
+                  <AppTextInput 
+                    style={styles.dateInput} 
+                    value={customEnd} 
+                    onChangeText={(text) => setCustomEnd(formatDateInput(text))} 
+                    placeholder="DD/MM/YYYY" 
+                    keyboardType="number-pad"
+                    maxLength={10}
+                  />
+                </View>
               </View>
             )}
 
             <Pressable style={styles.applyButton} onPress={() => setTimeModalVisible(false)}>
-              <Text style={styles.applyButtonText}>Terapkan</Text>
+              <Text style={styles.applyButtonText}>Terapkan Filter</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -266,30 +317,82 @@ export default function OrderHistoryScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  centerContainer: { flex: 1, backgroundColor: COLORS.background, alignItems: "center", justifyContent: "center" },
-  emptyTitle: { color: COLORS.text, fontSize: 15, marginTop: 10 },
-  headerContainer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, paddingBottom: 8 },
-  header: { color: COLORS.text, fontSize: 20, fontWeight: "600" },
-  timeFilterButton: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingVertical: 6, paddingHorizontal: 10, maxWidth: 150 },
-  timeFilterButtonText: { color: COLORS.text, fontSize: 10, fontWeight: "600" },
-  filterRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingBottom: 10 },
-  filterChip: { flex: 1, alignItems: "center", backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, paddingVertical: 8 },
-  filterChipText: { color: COLORS.textMuted, fontSize: 11 },
-  orderCard: { backgroundColor: COLORS.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: COLORS.border },
+  centerContainer: { flex: 1, backgroundColor: COLORS.background, alignItems: "center", justifyContent: "center", padding: 20 },
+  
+  loadingText: { color: COLORS.primary, fontSize: 16, marginTop: 12, fontWeight: "600" },
+  errorText: { color: COLORS.textMuted, fontSize: 16, marginTop: 12, textAlign: "center" },
+  
+  emptyTitle: { color: COLORS.text, fontSize: 18, fontWeight: "700", marginTop: 16 },
+  emptySubtitle: { color: COLORS.textMuted, fontSize: 14, marginTop: 8, textAlign: "center", paddingHorizontal: 20 },
+  
+  headerContainer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, paddingBottom: 10 },
+  header: { color: COLORS.text, fontSize: 20, fontWeight: "700" },
+  
+  timeFilterButton: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 12, maxWidth: 160 },
+  timeFilterButtonText: { color: COLORS.text, fontSize: 12, fontWeight: "600" },
+  
+  filterWrapper: { marginBottom: 10 },
+  filterScrollContainer: { 
+    paddingHorizontal: 16, 
+    paddingVertical: 8, 
+    gap: 10, 
+    alignItems: "center" 
+  },
+  filterChip: { 
+    alignItems: "center", 
+    justifyContent: "center",
+    backgroundColor: COLORS.surface, 
+    borderWidth: 1, 
+    borderColor: COLORS.border, 
+    borderRadius: 20, 
+    paddingVertical: 8, 
+    paddingHorizontal: 16,
+  },
+  filterChipText: { 
+    color: COLORS.textMuted, 
+    fontSize: 13, 
+    fontWeight: "500",
+  },
+  
+  listContainer: { padding: 16, gap: 16, paddingBottom: 40 },
+  orderCard: { 
+    backgroundColor: COLORS.surface, 
+    borderRadius: 12, 
+    padding: 16, 
+    borderWidth: 1, 
+    borderColor: COLORS.border,
+  },
   orderHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  orderNumber: { color: COLORS.text, fontWeight: "600", fontSize: 13 },
-  orderDate: { color: COLORS.textFaint, fontSize: 10, marginTop: 2 },
-  statusBadge: { fontSize: 10, borderWidth: 1, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  orderItems: { color: COLORS.textMuted, fontSize: 11, marginTop: 6 },
-  orderTotal: { color: COLORS.primary, fontSize: 14, fontWeight: "700", marginTop: 8 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: SPACING.xl },
-  modalContent: { backgroundColor: COLORS.background, borderRadius: RADIUS.lg, padding: SPACING.lg, ...CARD_SHADOW },
-  modalTitle: { color: COLORS.text, fontSize: 16, fontWeight: "700", marginBottom: SPACING.sm },
-  modalLabel: { color: COLORS.textMuted, fontSize: 11 },
-  dateInput: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.sm, padding: 10, color: COLORS.text },
+  headerLeft: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1 },
+  orderNumber: { color: COLORS.text, fontWeight: "700", fontSize: 14 },
+  orderDate: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
+  statusBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  statusText: { fontSize: 11, fontWeight: "700" },
+  
+  divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 12 },
+  
+  orderBody: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  itemInfo: { flex: 1 },
+  orderItemsTitle: { color: COLORS.text, fontSize: 14, fontWeight: "600", lineHeight: 20 },
+  orderItemsCount: { color: COLORS.textMuted, fontSize: 13, marginTop: 4 },
+  
+  orderFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.border },
+  footerLabel: { color: COLORS.text, fontSize: 14, fontWeight: "500" },
+  orderTotal: { color: COLORS.primary, fontSize: 16, fontWeight: "700" },
+  
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: SPACING.xl },
+  modalContent: { backgroundColor: COLORS.background, borderRadius: RADIUS.lg, padding: SPACING.lg, ...CARD_SHADOW, borderWidth: 1, borderColor: COLORS.border },
+  modalTitle: { color: COLORS.text, fontSize: 18, fontWeight: "700", marginBottom: SPACING.md, textAlign: "center" },
+  
   timeOptionRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  timeOptionText: { color: COLORS.text, fontSize: 14 },
+  timeOptionText: { color: COLORS.text, fontSize: 15 },
   timeOptionTextActive: { color: COLORS.primary, fontWeight: "700" },
-  applyButton: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, padding: 14, alignItems: "center", marginTop: SPACING.md },
-  applyButtonText: { color: COLORS.text, fontWeight: "600" },
+  
+  customDateContainer: { marginTop: SPACING.md, gap: 12 },
+  dateInputWrapper: { gap: 6 },
+  modalLabel: { color: COLORS.textMuted, fontSize: 13, fontWeight: "500" },
+  dateInput: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, color: COLORS.text, fontSize: 15 },
+  
+  applyButton: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, padding: 14, alignItems: "center", marginTop: SPACING.lg },
+  applyButtonText: { color: COLORS.text, fontWeight: "700", fontSize: 15 },
 });

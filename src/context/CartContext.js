@@ -56,12 +56,6 @@ export function CartProvider({ children }) {
     refreshCart();
   }, [refreshCart]);
 
-  const getUsedMlFromOtherVariants = (currentItems, productId, excludeVariantSizeMl) => {
-    return currentItems
-      .filter((item) => Number(item.productId) === Number(productId) && Number(item.variantSizeMl) !== Number(excludeVariantSizeMl))
-      .reduce((sum, item) => sum + Number(item.variantSizeMl) * Number(item.quantity), 0);
-  };
-
   const addToCart = async (product, variant, quantity = 1) => {
     if (!user) return { success: false, message: "Silakan login terlebih dahulu untuk menambahkan produk ke keranjang." };
     if (!product || !variant) return { success: false, message: "Data produk tidak valid." };
@@ -76,17 +70,16 @@ export function CartProvider({ children }) {
 
     const existingItem = items.find((item) => Number(item.productId) === Number(productId) && Number(item.variantSizeMl) === sizeMl);
     const currentQty = existingItem ? Number(existingItem.quantity) : 0;
-    const usedByOtherVariants = getUsedMlFromOtherVariants(items, productId, sizeMl);
-    const totalStockMl = Number(variant.stock ?? product.stock_ml ?? 0);
-    const remainingMl = totalStockMl - usedByOtherVariants;
-    const maxQtyForVariant = Math.max(0, Math.floor(remainingMl / sizeMl));
+    
+    // Stok sekarang langsung berdasarkan ketersediaan per varian
+    const maxStock = Number(variant.stock ?? 0);
     const desiredQty = currentQty + requestedQuantity;
 
-    if (maxQtyForVariant <= 0) {
-      return { success: false, message: "Stok tidak mencukupi karena stok produk sudah digunakan oleh ukuran lain di keranjang." };
+    if (maxStock <= 0) {
+      return { success: false, message: "Stok tidak mencukupi untuk ukuran ini." };
     }
-    if (desiredQty > maxQtyForVariant) {
-      return { success: false, message: `Jumlah melebihi stok yang tersedia. Maksimal ${maxQtyForVariant} item untuk ukuran ${sizeMl}ml.` };
+    if (desiredQty > maxStock) {
+      return { success: false, message: `Jumlah melebihi stok yang tersedia. Maksimal ${maxStock} item.` };
     }
 
     setLoading(true);
@@ -112,13 +105,10 @@ export function CartProvider({ children }) {
     const target = items.find((item) => Number(item.cartItemId) === Number(cartItemId));
     if (!target) return { success: false, message: "Item keranjang tidak ditemukan." };
 
-    const usedByOtherVariants = getUsedMlFromOtherVariants(items, target.productId, target.variantSizeMl);
-    const totalStockMl = Number(target.product?.stock_ml ?? target.variant?.stock ?? 0);
-    const remainingMl = totalStockMl - usedByOtherVariants;
-    const maxQty = Math.max(0, Math.floor(remainingMl / target.variantSizeMl));
+    const maxStock = Number(target.variant?.stock ?? 0);
 
-    if (newQuantity > maxQty) {
-      return { success: false, message: `Jumlah melebihi stok yang tersedia. Maksimal ${maxQty} item.` };
+    if (newQuantity > maxStock) {
+      return { success: false, message: `Jumlah melebihi stok yang tersedia. Maksimal ${maxStock} item.` };
     }
 
     setLoading(true);

@@ -7,3 +7,9 @@ export async function checkVoucher(code, totalPrice) {
   });
   return response.data;
 }
+
+// GET /api/vouchers/active -> { vouchers: [...] }
+export async function getActiveVouchers() {
+  const response = await apiClient.get("/vouchers/active");
+  return response.data.vouchers || [];
+}

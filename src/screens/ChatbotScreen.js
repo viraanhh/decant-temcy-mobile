@@ -6,8 +6,9 @@ import { COLORS } from "../constants/colors";
 import { sendChatMessage } from "../services/chatbotService";
 import AppTextInput from "../components/AppTextInput";
 import useKeyboardHeight from "../hooks/useKeyboardHeight";
+import withLoginGuard from "../components/withLoginGuard"; // <-- IMPORT GUARD
 
-const GREETING = "Halo! Saya asisten Decant Temcy. Ceritakan parfum seperti apa yang kamu cari 🌸";
+const GREETING = "Halo! Saya Mincy. Ceritakan parfum seperti apa yang kamu cari 🌸";
 
 const QUICK_PROMPTS = [
   "Rekomendasiin parfum fresh buat sehari-hari",
@@ -27,7 +28,7 @@ function ChatBubble({ message }) {
   );
 }
 
-export default function ChatbotScreen({ navigation }) {
+function ChatbotScreen({ navigation }) {
   const [messages, setMessages] = useState([{ id: "0", sender: "bot", text: GREETING }]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -37,11 +38,6 @@ export default function ChatbotScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
 
-  // softwareKeyboardLayoutMode "pan" menggeser SELURUH jendela ke atas ~setinggi keyboard
-  // (supaya field bawah tidak tertutup). Akibatnya bagian atas layar terpotong.
-  // paddingTop setinggi keyboard mendorong konten turun, sehingga setelah digeser
-  // header kembali terlihat di posisinya. Kalau ada celah/selisih kecil saat dites,
-  // kurangi nilai ini (mis. keyboardHeight - 12).
   const panCompensation = Platform.OS === "android" ? keyboardHeight : 0;
 
   const handleResetChat = () => {
@@ -76,7 +72,7 @@ export default function ChatbotScreen({ navigation }) {
             <Ionicons name="chevron-back" size={22} color={COLORS.text} />
           </Pressable>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Asisten Decant Temcy</Text>
+            <Text style={styles.headerTitle}>Mincy</Text>
             <Text style={styles.headerSubtitle}>Online · Siap bantu cari parfum</Text>
           </View>
           <Pressable style={styles.resetButton} onPress={handleResetChat}>
@@ -152,3 +148,6 @@ const styles = StyleSheet.create({
   sendButton: { backgroundColor: COLORS.primary, borderRadius: 8, paddingHorizontal: 16, justifyContent: "center" },
   sendButtonText: { color: COLORS.text, fontWeight: "600" },
 });
+
+// BUNGKUS DENGAN GUARD SAAT EXPORT
+export default withLoginGuard(ChatbotScreen, "chatbot");

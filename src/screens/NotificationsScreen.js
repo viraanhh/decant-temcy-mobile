@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, RefreshControl } from "react-native";
 import { COLORS } from "../constants/colors";
 import { getNotifications, markAllAsRead } from "../services/notificationService";
 
@@ -8,28 +8,44 @@ const TYPE_ICON = { order: "📦", promo: "🎁", system: "🔔" };
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  if (diffHours < 1) return "Baru saja";
-  if (diffHours < 24) return `${diffHours} jam lalu`;
-  return `${Math.floor(diffHours / 24)} hari lalu`;
+  const minutes = Math.floor(diffMs / (1000 * 60));
+  if (minutes < 1) return "Baru saja";
+  if (minutes < 60) return `${minutes} menit lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  return `${Math.floor(hours / 24)} hari lalu`;
 }
 
 export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(() => {
-    setIsLoading(true);
+  const load = useCallback(async () => {
     setError("");
-    getNotifications()
-      .then(setNotifications)
-      .catch(() => setError("Gagal memuat notifikasi"))
-      .finally(() => setIsLoading(false));
+    try {
+      setNotifications(await getNotifications());
+    } catch {
+      setError("Gagal memuat notifikasi");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  useFocusEffect(load);
+  // Muat ulang tiap layar dibuka (tanpa spinner kalau daftar sudah ada)
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await load();
+    setIsRefreshing(false);
+  };
 
   const hasUnread = notifications.some((n) => !n.isRead);
 
@@ -38,7 +54,7 @@ export default function NotificationsScreen() {
     try {
       await markAllAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch (err) {
+    } catch {
       setError("Gagal menandai notifikasi");
     } finally {
       setIsMarking(false);
@@ -49,15 +65,6 @@ export default function NotificationsScreen() {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator color={COLORS.primary} size="large" />
-      </View>
-    );
-  }
-
-  if (notifications.length === 0) {
-    return (
-      <View style={styles.centerContainer}>
-        <Text style={{ fontSize: 40 }}>🔔</Text>
-        <Text style={styles.emptyTitle}>Belum Ada Notifikasi</Text>
       </View>
     );
   }
@@ -78,7 +85,15 @@ export default function NotificationsScreen() {
       <FlatList
         data={notifications}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: 16, gap: 8 }}
+        contentContainerStyle={{ padding: 16, gap: 8, flexGrow: 1 }}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <Text style={{ fontSize: 40 }}>🔔</Text>
+            <Text style={styles.emptyTitle}>Belum Ada Notifikasi</Text>
+            <Text style={styles.emptySub}>Tarik ke bawah untuk menyegarkan</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <View style={[styles.card, !item.isRead && styles.cardUnread]}>
             <Text style={{ fontSize: 20 }}>{TYPE_ICON[item.type] || "🔔"}</Text>
@@ -98,7 +113,9 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   centerContainer: { flex: 1, backgroundColor: COLORS.background, alignItems: "center", justifyContent: "center" },
+  emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
   emptyTitle: { color: COLORS.text, fontSize: 15, marginTop: 10 },
+  emptySub: { color: COLORS.textMuted, fontSize: 12, marginTop: 4 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, paddingBottom: 8 },
   headerTitle: { color: COLORS.text, fontSize: 20, fontWeight: "600" },
   markAllText: { color: COLORS.primary, fontSize: 12, fontWeight: "600" },

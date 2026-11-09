@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { View, Text, Pressable, StyleSheet, ActivityIndicator, Platform, Alert, ScrollView, KeyboardAvoidingView } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
-import { SPACING, RADIUS } from "../../constants/theme";
+import { SPACING, RADIUS, CARD_SHADOW } from "../../constants/theme";
 import { createAdminVoucher, updateAdminVoucher, deleteAdminVoucher } from "../../services/adminService";
 import AppTextInput from "../../components/AppTextInput";
 
@@ -20,14 +21,17 @@ const formatDateInput = (text) => {
   return formatted;
 };
 
-// Tambahkan prop customColor untuk Chip aktif (Hijau/Merah)
-function Chip({ label, active, onPress, customColor = COLORS.primary }) {
+function Chip({ label, active, onPress, customColor = COLORS.primary, iconName }) {
   return (
     <Pressable 
-      style={[styles.chip, active && { backgroundColor: customColor, borderColor: customColor }]} 
+      style={[
+        styles.chip, 
+        active && { backgroundColor: `${customColor}18`, borderColor: customColor }
+      ]} 
       onPress={onPress}
     >
-      <Text style={[styles.chipText, active && styles.chipTextActive]}>{label}</Text>
+      {iconName && <Ionicons name={iconName} size={15} color={active ? customColor : COLORS.textMuted} />}
+      <Text style={[styles.chipText, active && { color: customColor, fontWeight: "750" }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -36,7 +40,6 @@ export default function AdminVoucherFormScreen({ route, navigation }) {
   const existing = route?.params?.voucher;
   const isEdit = !!existing;
 
-  // Jika mengedit, ubah format YYYY-MM-DD dari backend menjadi DD/MM/YYYY untuk ditampilkan
   let initialDate = "";
   if (existing?.expired_at) {
     const parts = existing.expired_at.split("T")[0].split("-");
@@ -58,11 +61,10 @@ export default function AdminVoucherFormScreen({ route, navigation }) {
   const handleSave = async () => {
     setError("");
     if (!code || !value) {
-      setError("Kode dan nilai voucher wajib diisi");
+      setError("Kode dan nilai diskon voucher wajib diisi!");
       return;
     }
 
-    // Ubah format DD/MM/YYYY kembali menjadi YYYY-MM-DD untuk API
     let formattedExpiredAt = null;
     if (expiredAt && expiredAt.length === 10) {
       const [day, month, year] = expiredAt.split("/");
@@ -72,13 +74,13 @@ export default function AdminVoucherFormScreen({ route, navigation }) {
     setIsSaving(true);
     try {
       const fields = {
-        code,
+        code: code.trim().toUpperCase(),
         type,
         value: Number(value),
         min_purchase: Number(minPurchase) || 0,
         max_discount: maxDiscount ? Number(maxDiscount) : null,
         quota: Number(quota) || 1,
-        expired_at: formattedExpiredAt, // Gunakan format backend
+        expired_at: formattedExpiredAt,
         is_active: isActive,
       };
 
@@ -96,16 +98,20 @@ export default function AdminVoucherFormScreen({ route, navigation }) {
   };
 
   const handleDelete = () => {
-    Alert.alert("Hapus Voucher", `Hapus voucher "${existing.code}" secara permanen?`, [
-      { text: "Batal", style: "cancel" },
-      {
-        text: "Hapus", style: "destructive",
-        onPress: async () => {
-          await deleteAdminVoucher(existing.voucher_id);
-          navigation.goBack();
+    Alert.alert(
+      "Hapus Voucher", 
+      `Yakin ingin menghapus voucher "${existing.code}" secara permanen?`, 
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus", style: "destructive",
+          onPress: async () => {
+            await deleteAdminVoucher(existing.voucher_id);
+            navigation.goBack();
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   return (
@@ -117,81 +123,165 @@ export default function AdminVoucherFormScreen({ route, navigation }) {
         <ScrollView
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: SPACING.lg, gap: 10, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.md, paddingBottom: 60 }}
         >
-          <Text style={styles.label}>Kode Voucher</Text>
-          <AppTextInput style={styles.input} value={code} onChangeText={setCode} placeholder="Contoh: DISKON10" autoCapitalize="characters" editable={!isEdit} />
-          {isEdit && <Text style={styles.hint}>Kode tidak bisa diubah setelah dibuat</Text>}
+          {/* KARTU KODE & STATUS VOUCHER */}
+          <View style={styles.card}>
+            <Text style={styles.cardSectionTitle}>Identitas & Status Voucher</Text>
+            
+            <Text style={styles.label}>Kode Voucher <Text style={{ color: "#EF4444" }}>*</Text></Text>
+            <AppTextInput 
+              style={styles.input} 
+              value={code} 
+              onChangeText={(v) => setCode(v.toUpperCase())} 
+              placeholder="Contoh: PROMOLEBARAN" 
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="characters" 
+              editable={!isEdit} 
+            />
+            {isEdit ? (
+              <Text style={styles.hint}>Kode voucher tidak dapat diubah setelah dibuat.</Text>
+            ) : (
+              <Text style={styles.hint}>Gunakan huruf kapital tanpa spasi agar mudah diketik customer.</Text>
+            )}
 
-          <Text style={styles.label}>Tipe Diskon</Text>
-          <View style={styles.chipRow}>
-            <Chip label="Persentase (%)" active={type === "percentage"} onPress={() => setType("percentage")} />
-            <Chip label="Nominal Tetap (Rp)" active={type === "fixed"} onPress={() => setType("fixed")} />
+            <Text style={styles.label}>Status Voucher</Text>
+            <View style={styles.chipRow}>
+              <Chip 
+                label="Aktif" 
+                iconName="checkmark-circle-outline"
+                active={isActive} 
+                onPress={() => setIsActive(true)} 
+                customColor="#10B981" 
+              />
+              <Chip 
+                label="Nonaktif" 
+                iconName="close-circle-outline"
+                active={!isActive} 
+                onPress={() => setIsActive(false)} 
+                customColor="#EF4444" 
+              />
+            </View>
           </View>
 
-          <Text style={styles.label}>{type === "percentage" ? "Nilai Diskon (%)" : "Nilai Diskon (Rp)"}</Text>
-          <AppTextInput 
-            style={styles.input} 
-            value={type === "percentage" ? value : formatRibuan(value)} 
-            onChangeText={(text) => {
-              const rawValue = type === "percentage" ? text : text.replace(/[^0-9]/g, "");
-              setValue(rawValue);
-            }} 
-            placeholder={type === "percentage" ? "10" : "5.000"} 
-            keyboardType="number-pad" 
-          />
+          {/* KARTU PENGATURAN NILAI DISKON */}
+          <View style={styles.card}>
+            <Text style={styles.cardSectionTitle}>Pengaturan Diskon</Text>
 
-          {type === "percentage" && (
-            <>
-              <Text style={styles.label}>Maksimal Potongan (Rp, opsional)</Text>
-              <AppTextInput 
-                style={styles.input} 
-                value={formatRibuan(maxDiscount)} 
-                onChangeText={(text) => setMaxDiscount(text.replace(/[^0-9]/g, ""))} 
-                placeholder="Kosongkan jika tidak dibatasi" 
-                keyboardType="number-pad" 
+            <Text style={styles.label}>Tipe Diskon</Text>
+            <View style={styles.chipRow}>
+              <Chip 
+                label="Persentase (%)" 
+                iconName="pie-chart-outline"
+                active={type === "percentage"} 
+                onPress={() => setType("percentage")} 
+                customColor={COLORS.primary} 
               />
-            </>
+              <Chip 
+                label="Nominal Tetap (Rp)" 
+                iconName="cash-outline"
+                active={type === "fixed"} 
+                onPress={() => setType("fixed")} 
+                customColor={COLORS.primary} 
+              />
+            </View>
+
+            <Text style={styles.label}>
+              {type === "percentage" ? "Nilai Diskon (%)" : "Nominal Potongan (Rp)"} <Text style={{ color: "#EF4444" }}>*</Text>
+            </Text>
+            <AppTextInput 
+              style={styles.input} 
+              value={type === "percentage" ? value : formatRibuan(value)} 
+              onChangeText={(text) => {
+                const rawValue = type === "percentage" ? text.replace(/[^0-9]/g, "") : text.replace(/[^0-9]/g, "");
+                setValue(rawValue);
+              }} 
+              placeholder={type === "percentage" ? "Contoh: 10" : "Contoh: 20.000"} 
+              placeholderTextColor={COLORS.textMuted}
+              keyboardType="number-pad" 
+            />
+
+            {type === "percentage" && (
+              <>
+                <Text style={styles.label}>Maksimal Potongan Diskon (Rp, Opsional)</Text>
+                <AppTextInput 
+                  style={styles.input} 
+                  value={formatRibuan(maxDiscount)} 
+                  onChangeText={(text) => setMaxDiscount(text.replace(/[^0-9]/g, ""))} 
+                  placeholder="Kosongkan jika tidak ada batas maksimal" 
+                  placeholderTextColor={COLORS.textMuted}
+                  keyboardType="number-pad" 
+                />
+              </>
+            )}
+          </View>
+
+          {/* KARTU KETENTUAN & KUOTA */}
+          <View style={styles.card}>
+            <Text style={styles.cardSectionTitle}>Ketentuan Penggunaan & Masa Aktif</Text>
+
+            <Text style={styles.label}>Minimal Belanja (Rp)</Text>
+            <AppTextInput 
+              style={styles.input} 
+              value={formatRibuan(minPurchase)} 
+              onChangeText={(text) => setMinPurchase(text.replace(/[^0-9]/g, ""))} 
+              placeholder="0 (Tanpa minimal belanja)" 
+              placeholderTextColor={COLORS.textMuted}
+              keyboardType="number-pad" 
+            />
+
+            <Text style={styles.label}>Kuota Total Penggunaan</Text>
+            <AppTextInput 
+              style={styles.input} 
+              value={quota} 
+              onChangeText={(v) => setQuota(v.replace(/[^0-9]/g, ""))} 
+              placeholder="100" 
+              placeholderTextColor={COLORS.textMuted}
+              keyboardType="number-pad" 
+            />
+
+            <Text style={styles.label}>Tanggal Kedaluwarsa (DD/MM/YYYY, Opsional)</Text>
+            <AppTextInput 
+              style={styles.input} 
+              value={expiredAt} 
+              onChangeText={(text) => setExpiredAt(formatDateInput(text))} 
+              placeholder="DD/MM/YYYY (Cth: 31/12/2026)" 
+              placeholderTextColor={COLORS.textMuted}
+              keyboardType="number-pad"
+              maxLength={10}
+            />
+          </View>
+
+          {!!error && (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={18} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
           )}
 
-          <Text style={styles.label}>Minimal Belanja (Rp)</Text>
-          <AppTextInput 
-            style={styles.input} 
-            value={formatRibuan(minPurchase)} 
-            onChangeText={(text) => setMinPurchase(text.replace(/[^0-9]/g, ""))} 
-            placeholder="0" 
-            keyboardType="number-pad" 
-          />
-
-          <Text style={styles.label}>Kuota Penggunaan</Text>
-          <AppTextInput style={styles.input} value={quota} onChangeText={setQuota} placeholder="1" keyboardType="number-pad" />
-
-          <Text style={styles.label}>Tanggal Kedaluwarsa (DD/MM/YYYY, opsional)</Text>
-          <AppTextInput 
-            style={styles.input} 
-            value={expiredAt} 
-            onChangeText={(text) => setExpiredAt(formatDateInput(text))} 
-            placeholder="DD/MM/YYYY" 
-            keyboardType="number-pad"
-            maxLength={10}
-          />
-
-          <Text style={styles.label}>Status</Text>
-          <View style={styles.chipRow}>
-            {/* Warna Hijau untuk Aktif, Merah untuk Nonaktif */}
-            <Chip label="Aktif" active={isActive} onPress={() => setIsActive(true)} customColor="#4CAF50" />
-            <Chip label="Nonaktif" active={!isActive} onPress={() => setIsActive(false)} customColor="#F44336" />
-          </View>
-
-          {!!error && <Text style={styles.errorText}>{error}</Text>}
-
-          <Pressable style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-            {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>{isEdit ? "Simpan Perubahan" : "Buat Voucher"}</Text>}
+          {/* TOMBOL AKSI */}
+          <Pressable 
+            style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.8 }]} 
+            onPress={handleSave} 
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <ActivityIndicator color={COLORS.surface} size="small" />
+            ) : (
+              <>
+                <Ionicons name={isEdit ? "checkmark-circle-outline" : "add-circle-outline"} size={20} color={COLORS.surface} />
+                <Text style={styles.saveButtonText}>{isEdit ? "Simpan Perubahan" : "Buat Voucher Baru"}</Text>
+              </>
+            )}
           </Pressable>
 
           {isEdit && (
-            <Pressable style={styles.deleteButton} onPress={handleDelete}>
-              <Text style={styles.deleteButtonText}>Hapus Voucher</Text>
+            <Pressable 
+              style={({ pressed }) => [styles.deleteButton, pressed && { backgroundColor: "rgba(239, 68, 68, 0.08)" }]} 
+              onPress={handleDelete}
+            >
+              <Ionicons name="trash-outline" size={18} color="#EF4444" />
+              <Text style={styles.deleteButtonText}>Hapus Voucher Ini</Text>
             </Pressable>
           )}
         </ScrollView>
@@ -202,19 +292,92 @@ export default function AdminVoucherFormScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  label: { color: COLORS.textMuted, fontSize: 12, marginTop: 6 },
-  hint: { color: COLORS.textFaint, fontSize: 10, marginTop: -6 },
-  input: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, color: COLORS.text },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   
-  chipText: { color: COLORS.textMuted, fontSize: 12 },
-  chipTextActive: { color: COLORS.text, fontWeight: "600" },
-  errorText: { color: COLORS.primary, fontSize: 12 },
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    ...CARD_SHADOW
+  },
+  cardSectionTitle: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    paddingBottom: 8,
+  },
+
+  label: { color: COLORS.textMuted, fontSize: 12, marginTop: 10, marginBottom: 4, fontWeight: "600" },
+  hint: { color: COLORS.textMuted, fontSize: 11, marginTop: 4, fontStyle: "italic" },
   
-  // Memperbaiki jarak antar tombol
-  saveButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 24, marginBottom: 0 },
-  saveButtonText: { color: COLORS.text, fontWeight: "600" },
-  deleteButton: { borderWidth: 1, borderColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 12 },
-  deleteButtonText: { color: COLORS.primary, fontWeight: "600" },
+  input: { 
+    backgroundColor: COLORS.background, 
+    borderWidth: 1, 
+    borderColor: COLORS.border, 
+    borderRadius: RADIUS.sm, 
+    paddingHorizontal: 12, 
+    paddingVertical: 10, 
+    color: COLORS.text,
+    fontSize: 14
+  },
+
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
+  chip: { 
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: COLORS.background, 
+    borderWidth: 1, 
+    borderColor: COLORS.border, 
+    borderRadius: RADIUS.sm, 
+    paddingVertical: 9, 
+    paddingHorizontal: 16,
+    flexGrow: 1,
+    justifyContent: "center"
+  },
+  chipText: { color: COLORS.textMuted, fontSize: 12, fontWeight: "600" },
+
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.3)",
+    borderRadius: RADIUS.sm,
+    padding: SPACING.sm,
+  },
+  errorText: { color: "#EF4444", fontSize: 12, fontWeight: "600", flex: 1 },
+
+  saveButton: { 
+    backgroundColor: COLORS.primary, 
+    borderRadius: RADIUS.md, 
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: SPACING.md, 
+    marginTop: SPACING.sm, 
+    ...CARD_SHADOW
+  },
+  saveButtonText: { color: COLORS.surface, fontWeight: "800", fontSize: 15 },
+  
+  deleteButton: { 
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1, 
+    borderColor: "#EF4444", 
+    backgroundColor: "rgba(239, 68, 68, 0.05)",
+    borderRadius: RADIUS.md, 
+    padding: SPACING.md, 
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.xl 
+  },
+  deleteButtonText: { color: "#EF4444", fontWeight: "750", fontSize: 14 },
 });

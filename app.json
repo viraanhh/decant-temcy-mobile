@@ -1,8 +1,10 @@
+
 {
   "expo": {
     "name": "decant-temcy-mobile",
     "slug": "decant-temcy-mobile",
     "version": "1.0.0",
+    "scheme": "decanttemcy",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,7 +26,8 @@
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "VIBRATE"
-      ]
+      ],
+      "package": "com.virahayati.decanttemcymobile"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,7 +41,8 @@
           "photosPermission": "Aplikasi ini membutuhkan akses ke galeri untuk memindai foto parfum.",
           "cameraPermission": "Aplikasi ini membutuhkan akses ke kamera untuk memindai botol atau label parfum secara langsung."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }
