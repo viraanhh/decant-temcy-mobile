@@ -5,6 +5,7 @@ import { useCart } from "../../context/CartContext";
 import { checkout } from "../../services/orderService";
 import { useAddress } from "../../context/AddressContext";
 import AppTextInput from "../../components/AppTextInput";
+import ContactAdminButton from "../../components/ContactAdminButton";
 
 function formatRupiah(amount) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
@@ -14,8 +15,6 @@ export default function SimpleCheckoutScreen({ navigation }) {
   const { items, subtotal, refreshCart } = useCart();
   const { selectedAddress } = useAddress();
 
-  // Form manual dipakai HANYA sebagai fallback kalau belum ada alamat
-  // tersimpan sama sekali (address book kosong).
   const [shippingName, setShippingName] = useState("");
   const [shippingPhone, setShippingPhone] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
@@ -56,10 +55,7 @@ export default function SimpleCheckoutScreen({ navigation }) {
   };
 
   return (
-    <ScrollView keyboardDismissMode="on-drag" style={styles.container} contentContainerStyle={{ padding: 20 }}>
-      {/* 🔴 Catatan: metode pengiriman (Pickup/Diantar Langsung/Ekspedisi) belum
-          bisa dipilih di sini karena backend belum mendukungnya. */}
-
+    <ScrollView keyboardDismissMode="on-drag" style={styles.container} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
       {selectedAddress ? (
         <View style={styles.selectedAddressBox}>
           <Text style={styles.sectionLabel}>Alamat Pengiriman</Text>
@@ -99,10 +95,14 @@ export default function SimpleCheckoutScreen({ navigation }) {
         <Text style={styles.summaryTotal}>{formatRupiah(subtotal)}</Text>
       </View>
 
+      <View style={{ marginTop: 14 }}>
+        <ContactAdminButton label="Tanya admin via WhatsApp" />
+      </View>
+
       {!!error && <Text style={styles.errorText}>{error}</Text>}
 
       <Pressable style={styles.submitButton} onPress={handleCheckout} disabled={isSubmitting}>
-        {isSubmitting ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.submitButtonText}>Buat Pesanan</Text>}
+        {isSubmitting ? <ActivityIndicator color={COLORS.onPrimary} /> : <Text style={styles.submitButtonText}>Buat Pesanan</Text>}
       </Pressable>
     </ScrollView>
   );
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   summaryTotal: { color: COLORS.primary, fontSize: 16, fontWeight: "700" },
   errorText: { color: COLORS.primary, fontSize: 12, marginTop: 12 },
   submitButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 20 },
-  submitButtonText: { color: COLORS.text, fontWeight: "600" },
+  submitButtonText: { color: COLORS.onPrimary, fontWeight: "600" },
   selectedAddressBox: { backgroundColor: COLORS.surface, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border, padding: 14, marginBottom: 10 },
   addressText: { color: COLORS.text, fontSize: 13, marginTop: 4 },
   addressTextMuted: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },

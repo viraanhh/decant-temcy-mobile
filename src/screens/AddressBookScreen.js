@@ -31,12 +31,12 @@ export default function AddressBookScreen({ navigation, route }) {
           </View>
         }
         renderItem={({ item }) => (
-          <Pressable 
+          <Pressable
             style={({ pressed }) => [
-              styles.card, 
+              styles.card,
               item.isDefault && styles.cardDefault,
-              pressed && { opacity: 0.8 }
-            ]} 
+              pressed && { opacity: 0.8 },
+            ]}
             onPress={() => handlePick(item.id)}
           >
             <View style={styles.cardHeader}>
@@ -65,16 +65,20 @@ export default function AddressBookScreen({ navigation, route }) {
 
             <View style={styles.cardActions}>
               {!item.isDefault && (
-                <Pressable 
-                  style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.6 }]} 
+                <Pressable
+                  style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.6 }]}
                   onPress={() => setAsDefault(item.id)}
                 >
                   <Ionicons name="checkmark-circle-outline" size={14} color={COLORS.textMuted} />
                   <Text style={styles.actionLink}>Jadikan Utama</Text>
                 </Pressable>
               )}
-              <Pressable 
-                style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.6 }, item.isDefault && { marginLeft: 'auto' }]} 
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  pressed && { opacity: 0.6 },
+                  item.isDefault && { marginLeft: "auto" },
+                ]}
                 onPress={() => removeAddress(item.id)}
               >
                 <Ionicons name="trash-outline" size={14} color={COLORS.primary} />
@@ -91,7 +95,7 @@ export default function AddressBookScreen({ navigation, route }) {
           style={({ pressed }) => [styles.addButton, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
           onPress={() => navigation.navigate("AddAddress", { selectMode })}
         >
-          <Ionicons name="add-circle" size={20} color={COLORS.background} />
+          <Ionicons name="add-circle" size={20} color={COLORS.onPrimary} />
           <Text style={styles.addButtonText}>Tambah Alamat Baru</Text>
         </Pressable>
       </View>
@@ -103,12 +107,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   listContent: { padding: 16, paddingBottom: 20 },
 
-  // Empty State
-  emptyContainer: { 
-    alignItems: "center", 
-    justifyContent: "center", 
-    paddingVertical: 60, 
-    paddingHorizontal: 24 
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 24,
   },
   emptyIconCircle: {
     width: 80,
@@ -122,12 +125,11 @@ const styles = StyleSheet.create({
   emptyTitle: { color: COLORS.text, fontSize: 18, fontWeight: "700", marginBottom: 8 },
   emptyText: { color: COLORS.textMuted, textAlign: "center", fontSize: 13, lineHeight: 20 },
 
-  // Card Styles
-  card: { 
-    backgroundColor: COLORS.surface, 
-    borderRadius: 16, 
-    padding: 16, 
-    borderWidth: 1, 
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
     borderColor: COLORS.border,
     marginBottom: 12,
     shadowColor: "#000",
@@ -143,14 +145,14 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   labelWrapper: { flexDirection: "row", alignItems: "center", gap: 6 },
   cardLabel: { color: COLORS.text, fontSize: 15, fontWeight: "700" },
-  
-  defaultBadge: { 
-    backgroundColor: `${COLORS.primary}15`, 
-    borderWidth: 1, 
-    borderColor: COLORS.primary, 
-    borderRadius: 20, 
-    paddingHorizontal: 10, 
-    paddingVertical: 2 
+
+  defaultBadge: {
+    backgroundColor: `${COLORS.primary}15`,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
   },
   defaultBadgeText: { color: COLORS.primary, fontSize: 10, fontWeight: "700" },
 
@@ -167,26 +169,25 @@ const styles = StyleSheet.create({
   actionButton: { flexDirection: "row", alignItems: "center", gap: 4 },
   actionLink: { color: COLORS.textMuted, fontSize: 12, fontWeight: "500" },
 
-  // Footer Button
   footer: {
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     backgroundColor: COLORS.surface,
   },
-  addButton: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    justifyContent: "center", 
-    gap: 8, 
-    backgroundColor: COLORS.primary, 
-    borderRadius: 12, 
-    padding: 16, 
+  addButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    padding: 16,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 4,
   },
-  addButtonText: { color: COLORS.background, fontWeight: "700", fontSize: 15 },
+  addButtonText: { color: COLORS.onPrimary, fontWeight: "700", fontSize: 15 },
 });

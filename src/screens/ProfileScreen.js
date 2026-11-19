@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { getAvatarUrl } from "../constants/api";
 import { deleteMyAccount } from "../services/userService";
 import { useState } from "react";
+import ThemeSelector from "../components/ThemeSelector";
 
 const MENU_SECTIONS = [
   {
@@ -100,7 +101,6 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.avatarInitial}>{displayName.charAt(0).toUpperCase()}</Text>
           </View>
         )}
-        {/* Tampilkan displayName dengan margin yang sudah dirapikan */}
         <Text style={styles.userName}>{displayName}</Text>
         <Text style={styles.userEmail}>{user.email}</Text>
       </View>
@@ -125,6 +125,8 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </View>
       ))}
+
+      <ThemeSelector style={{ marginHorizontal: SPACING.lg, marginTop: 4, marginBottom: SPACING.sm }} />
 
       <Pressable style={styles.logoutButton} onPress={logout}>
         <Ionicons name="log-out-outline" size={18} color={COLORS.primary} />
@@ -155,7 +157,7 @@ const styles = StyleSheet.create({
   guestSubtitle: { color: COLORS.textMuted, fontSize: 14, marginTop: 12, textAlign: "center", lineHeight: 22, paddingHorizontal: 20 },
   guestActionRow: { flexDirection: "row", gap: 12, marginTop: 32, width: "100%" },
   guestLoginButton: { flex: 1, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 14, alignItems: "center" },
-  guestLoginButtonText: { color: COLORS.text, fontWeight: "700", fontSize: 15 },
+  guestLoginButtonText: { color: COLORS.onPrimary, fontWeight: "700", fontSize: 15 },
   guestRegisterButton: { flex: 1, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.md, paddingVertical: 14, alignItems: "center" },
   guestRegisterButtonText: { color: COLORS.primary, fontWeight: "700", fontSize: 15 },
   guestAboutButton: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 40, padding: 10 },
@@ -163,7 +165,7 @@ const styles = StyleSheet.create({
   header: { alignItems: "center", paddingTop: 80, paddingBottom: SPACING.xl },
   avatar: { width: 84, height: 84, borderRadius: 42, borderWidth: 2, borderColor: COLORS.primary },
   avatarPlaceholder: { width: 84, height: 84, borderRadius: 42, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  avatarInitial: { color: COLORS.text, fontSize: 32, fontWeight: "700" },
+  avatarInitial: { color: COLORS.onPrimary, fontSize: 32, fontWeight: "700" },
   userName: { color: COLORS.text, fontSize: 18, fontWeight: "700", marginTop: 8 },
   userEmail: { color: COLORS.textMuted, fontSize: 12, marginTop: 3 },
   section: { paddingHorizontal: SPACING.lg, marginBottom: SPACING.lg },

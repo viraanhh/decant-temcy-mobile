@@ -54,7 +54,7 @@ export default function ForgotPasswordScreen({ navigation }) {
         />
 
         <Pressable style={styles.button} onPress={handleSend} disabled={isSending}>
-          {isSending ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.buttonText}>Kirim Kode Reset</Text>}
+          {isSending ? <ActivityIndicator color={COLORS.onPrimary} /> : <Text style={styles.buttonText}>Kirim Kode Reset</Text>}
         </Pressable>
 
         {sent && (
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   label: { color: COLORS.textMuted, fontSize: 12, marginTop: 6 },
   input: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, color: COLORS.text },
   button: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: SPACING.sm },
-  buttonText: { color: COLORS.text, fontWeight: "700" },
+  buttonText: { color: COLORS.onPrimary, fontWeight: "700" },
   notice: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#3DBA6C15", borderRadius: RADIUS.md, padding: SPACING.md },
   noticeText: { flex: 1, color: COLORS.text, fontSize: 12, lineHeight: 17 },
   linkButton: { alignItems: "center", padding: SPACING.sm },

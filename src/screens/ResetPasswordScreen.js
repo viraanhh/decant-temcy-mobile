@@ -91,7 +91,7 @@ export default function ResetPasswordScreen({ navigation }) {
         />
 
         <Pressable style={styles.button} onPress={handleReset} disabled={isSaving}>
-          {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.buttonText}>Simpan Password Baru</Text>}
+          {isSaving ? <ActivityIndicator color={COLORS.onPrimary} /> : <Text style={styles.buttonText}>Simpan Password Baru</Text>}
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -106,5 +106,5 @@ const styles = StyleSheet.create({
   label: { color: COLORS.textMuted, fontSize: 12, marginTop: 6 },
   input: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, color: COLORS.text },
   button: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: SPACING.sm },
-  buttonText: { color: COLORS.text, fontWeight: "700" },
+  buttonText: { color: COLORS.onPrimary, fontWeight: "700" },
 });

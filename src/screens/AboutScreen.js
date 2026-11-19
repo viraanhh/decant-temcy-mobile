@@ -35,7 +35,7 @@ export default function AboutScreen() {
         <View style={styles.card}>
           <Text style={styles.description}>
             Marketplace parfum decant premium terpercaya. Temukan signature scent kamu tanpa risiko blind buy. 
-            Tersedia dalam pilihan ukuran praktis mulai dari 1ml, 2ml, 3ml, hingga 5ml.
+            Tersedia dalam pilihan ukuran praktis mulai dari 1ml, 2ml, 3ml, 5ml, hingga 10ml.
           </Text>
 
           {/* Guarantee Badge inside Card */}

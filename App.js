@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { Text, TextInput } from "react-native";
-import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as SystemUI from "expo-system-ui";
@@ -17,7 +17,7 @@ import { CartProvider } from "./src/context/CartContext";
 import { WishlistProvider } from "./src/context/WishlistContext";
 import { AddressProvider } from "./src/context/AddressContext";
 import RootNavigator from "./src/navigation/RootNavigator";
-import { COLORS } from "./src/constants/colors";
+import { COLORS, isDark } from "./src/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -27,12 +27,17 @@ Text.defaultProps.style = [{ fontFamily: "Montserrat_400Regular" }, Text.default
 TextInput.defaultProps = TextInput.defaultProps || {};
 TextInput.defaultProps.style = [{ fontFamily: "Montserrat_400Regular" }, TextInput.defaultProps.style];
 
-// Konfigurasi tema navigasi agar background dasarnya mengikuti warna gelap aplikasi
+// Tema navigasi mengikuti palet aplikasi (mencegah blank putih/hitam saat pop/back screen)
+const BaseTheme = isDark ? DarkTheme : DefaultTheme;
 const AppTheme = {
-  ...DefaultTheme,
+  ...BaseTheme,
   colors: {
-    ...DefaultTheme.colors,
+    ...BaseTheme.colors,
     background: COLORS.background,
+    card: COLORS.surface,
+    text: COLORS.text,
+    border: COLORS.border,
+    primary: COLORS.primary,
   },
 };
 
@@ -61,7 +66,7 @@ export default function App() {
           <AddressProvider>
             {/* Menambahkan prop theme={AppTheme} untuk mencegah blank putih saat pop/back screen */}
             <NavigationContainer theme={AppTheme} onReady={onLayoutRootView}>
-              <StatusBar style="light" />
+              <StatusBar style={isDark ? "light" : "dark"} />
               <RootNavigator />
             </NavigationContainer>
           </AddressProvider>

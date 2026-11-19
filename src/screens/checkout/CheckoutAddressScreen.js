@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   View,
@@ -14,6 +13,7 @@ import {
 import { COLORS } from "../../constants/colors";
 import { useAddress } from "../../context/AddressContext";
 import { getActiveStores } from "../../services/storeService";
+import ContactAdminButton from "../../components/ContactAdminButton";
 
 export default function CheckoutAddressScreen({ navigation, route }) {
   // Ambil ID produk yang dipilih dari halaman sebelumnya
@@ -133,6 +133,7 @@ export default function CheckoutAddressScreen({ navigation, route }) {
           contentContainerStyle={{
             gap: 10,
             paddingTop: 12,
+            paddingBottom: 20,
           }}
         >
           <Text style={styles.pickupHeading}>
@@ -235,6 +236,10 @@ export default function CheckoutAddressScreen({ navigation, route }) {
               konfirmasi waktu pengambilan.
             </Text>
           )}
+
+          <View style={{ marginTop: 8 }}>
+            <ContactAdminButton label="Tanya admin via WhatsApp" />
+          </View>
         </ScrollView>
       ) : (
         <FlatList
@@ -243,6 +248,7 @@ export default function CheckoutAddressScreen({ navigation, route }) {
           contentContainerStyle={{
             gap: 10,
             paddingTop: 10,
+            paddingBottom: 20,
           }}
           ListEmptyComponent={
             !isLoading && (
@@ -282,18 +288,22 @@ export default function CheckoutAddressScreen({ navigation, route }) {
             </Pressable>
           )}
           ListFooterComponent={
-            <Pressable
-              style={styles.addAddressButton}
-              onPress={() =>
-                navigation.navigate("AddressBook", {
-                  selectMode: true,
-                })
-              }
-            >
-              <Text style={styles.addAddressText}>
-                + Tambah / Kelola Alamat
-              </Text>
-            </Pressable>
+            <View style={{ gap: 6 }}>
+              <Pressable
+                style={styles.addAddressButton}
+                onPress={() =>
+                  navigation.navigate("AddressBook", {
+                    selectMode: true,
+                  })
+                }
+              >
+                <Text style={styles.addAddressText}>
+                  + Tambah / Kelola Alamat
+                </Text>
+              </Pressable>
+
+              <ContactAdminButton label="Tanya admin via WhatsApp" />
+            </View>
           }
         />
       )}
@@ -356,7 +366,7 @@ const styles = StyleSheet.create({
   },
 
   methodChipTextActive: {
-    color: COLORS.text,
+    color: COLORS.onPrimary,
     fontWeight: "600",
   },
 
@@ -468,7 +478,7 @@ const styles = StyleSheet.create({
   },
 
   continueButtonText: {
-    color: COLORS.text,
+    color: COLORS.onPrimary,
     fontWeight: "600",
   },
 });

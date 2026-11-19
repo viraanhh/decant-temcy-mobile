@@ -86,7 +86,7 @@ export default function PreferenceOnboardingScreen({ navigation }) {
       </View>
 
       <Pressable style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-        {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>Simpan & Mulai Belanja</Text>}
+        {isSaving ? <ActivityIndicator color={COLORS.onPrimary} /> : <Text style={styles.saveButtonText}>Simpan & Mulai Belanja</Text>}
       </Pressable>
 
       <Pressable onPress={finish}>
@@ -105,8 +105,8 @@ const styles = StyleSheet.create({
   chip: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
   chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   chipText: { color: COLORS.textMuted, fontSize: 12 },
-  chipTextActive: { color: COLORS.text, fontWeight: "600" },
+  chipTextActive: { color: COLORS.onPrimary, fontWeight: "600" },
   saveButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 28 },
-  saveButtonText: { color: COLORS.text, fontWeight: "600" },
+  saveButtonText: { color: COLORS.onPrimary, fontWeight: "600" },
   skipText: { color: COLORS.textMuted, textAlign: "center", marginTop: 16, fontSize: 12 },
 });

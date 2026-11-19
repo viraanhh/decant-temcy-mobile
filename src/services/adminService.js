@@ -1,3 +1,4 @@
+
 import apiClient from "./apiClient";
 
 export async function getDashboardStats() {
@@ -21,32 +22,47 @@ export async function updateSysAdminUser(id, data) {
 }
 
 export async function resetSysAdminUserPassword(id, data) {
-  const response = await apiClient.put(`/sysadmin/users/${id}/reset-password`, data);
+  const response = await apiClient.put(
+    `/sysadmin/users/${id}/reset-password`,
+    data
+  );
   return response.data;
 }
 
 export async function toggleSysAdminUserStatus(id, sysadminPassword) {
-  const response = await apiClient.put(`/sysadmin/users/${id}/toggle-status`, {
-    sysadmin_password: sysadminPassword,
-  });
+  const response = await apiClient.put(
+    `/sysadmin/users/${id}/toggle-status`,
+    {
+      sysadmin_password: sysadminPassword,
+    }
+  );
   return response.data;
 }
 
 export async function setSysAdminUserRole(id, role, sysadminPassword) {
-  const response = await apiClient.put(`/sysadmin/users/${id}/set-role`, {
-    role,
-    sysadmin_password: sysadminPassword,
-  });
+  const response = await apiClient.put(
+    `/sysadmin/users/${id}/set-role`,
+    {
+      role,
+      sysadmin_password: sysadminPassword,
+    }
+  );
   return response.data;
 }
 
 export async function getSystemStatus() {
-  const response = await apiClient.get("/sysadmin/monitoring/status", { timeout: 30000 });
+  const response = await apiClient.get(
+    "/sysadmin/monitoring/status",
+    { timeout: 30000 }
+  );
   return response.data;
 }
 
 export async function getSystemLogs(params = {}) {
-  const response = await apiClient.get("/sysadmin/monitoring/logs", { params });
+  const response = await apiClient.get(
+    "/sysadmin/monitoring/logs",
+    { params }
+  );
   return response.data;
 }
 
@@ -61,12 +77,20 @@ export async function updateSystemConfigs(configs) {
 }
 
 export async function testSmtpConnection() {
-  const response = await apiClient.post("/sysadmin/config/test-smtp", null, { timeout: 30000 });
+  const response = await apiClient.post(
+    "/sysadmin/config/test-smtp",
+    null,
+    { timeout: 30000 }
+  );
   return response.data;
 }
 
 export async function testAiConnection() {
-  const response = await apiClient.post("/sysadmin/config/test-ai", null, { timeout: 30000 });
+  const response = await apiClient.post(
+    "/sysadmin/config/test-ai",
+    null,
+    { timeout: 30000 }
+  );
   return response.data;
 }
 
@@ -87,31 +111,53 @@ export async function getSalesReport(params = {}) {
 
 export async function createAdminProduct(fields, imageUri) {
   const formData = new FormData();
+
   Object.entries(fields).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") formData.append(key, value);
+    if (value !== undefined && value !== null && value !== "") {
+      formData.append(key, value);
+    }
   });
+
   if (imageUri) {
-    formData.append("image", { uri: imageUri, name: "product.jpg", type: "image/jpeg" });
+    formData.append("image", {
+      uri: imageUri,
+      name: "product.jpg",
+      type: "image/jpeg",
+    });
   }
 
   const response = await apiClient.post("/products", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+
   return response.data.product;
 }
 
 export async function updateAdminProduct(id, fields, imageUri) {
   const formData = new FormData();
+
   Object.entries(fields).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") formData.append(key, value);
+    if (value !== undefined && value !== null && value !== "") {
+      formData.append(key, value);
+    }
   });
+
   if (imageUri) {
-    formData.append("image", { uri: imageUri, name: "product.jpg", type: "image/jpeg" });
+    formData.append("image", {
+      uri: imageUri,
+      name: "product.jpg",
+      type: "image/jpeg",
+    });
   }
 
-  const response = await apiClient.put(`/products/${id}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const response = await apiClient.put(
+    `/products/${id}`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
+
   return response.data.product;
 }
 
@@ -126,7 +172,10 @@ export async function getAdminOrders(params = {}) {
 }
 
 export async function updateOrderStatus(orderId, status) {
-  const response = await apiClient.put(`/orders/${orderId}/status`, { status });
+  const response = await apiClient.put(
+    `/orders/${orderId}/status`,
+    { status }
+  );
   return response.data;
 }
 
@@ -146,7 +195,10 @@ export async function createAdminVoucher(fields) {
 }
 
 export async function updateAdminVoucher(id, fields) {
-  const response = await apiClient.put(`/vouchers/admin/${id}`, fields);
+  const response = await apiClient.put(
+    `/vouchers/admin/${id}`,
+    fields
+  );
   return response.data.voucher;
 }
 
@@ -156,12 +208,18 @@ export async function deleteAdminVoucher(id) {
 }
 
 export async function getAdminInventory(params = {}) {
-  const response = await apiClient.get("/products/admin/all", { params });
+  const response = await apiClient.get(
+    "/products/admin/all",
+    { params }
+  );
   return response.data;
 }
 
 export async function updateProductStock(id, payload) {
-  const response = await apiClient.patch(`/products/${id}/stock`, payload);
+  const response = await apiClient.patch(
+    `/products/${id}/stock`,
+    payload
+  );
   return response.data;
 }
 
@@ -176,11 +234,48 @@ export async function createAdminStore(data) {
 }
 
 export async function updateAdminStore(id, data) {
-  const response = await apiClient.put(`/stores/admin/${id}`, data);
+  const response = await apiClient.put(
+    `/stores/admin/${id}`,
+    data
+  );
   return response.data;
 }
 
 export async function toggleAdminStore(id) {
-  const response = await apiClient.put(`/stores/admin/${id}/toggle`);
+  const response = await apiClient.put(
+    `/stores/admin/${id}/toggle`
+  );
+  return response.data;
+}
+
+// ==============================
+// MANAJEMEN KURIR ADMIN
+// ==============================
+
+export async function getAdminCouriers() {
+  const response = await apiClient.get(
+    "/shipping/admin/couriers"
+  );
+  return response.data.couriers || [];
+}
+
+export async function toggleCourier(code) {
+  const response = await apiClient.put(
+    `/shipping/admin/couriers/${code}/toggle`
+  );
+  return response.data;
+}
+
+// ==============================
+// MANAJEMEN KONTAK & SOSMED
+// ==============================
+
+export async function getPublicContacts() {
+  const response = await apiClient.get("/admin/public-contacts");
+  return response.data;
+}
+
+export async function updateAdminContacts(data) {
+  const response = await apiClient.put("/admin/contacts", data);
   return response.data;
 }

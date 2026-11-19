@@ -160,7 +160,15 @@ export default function CatalogScreen({ navigation, route }) {
   const [error, setError] = useState("");
 
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [expandedFilter, setExpandedFilter] = useState(null); // Menyimpan ID filter yang sedang dibuka
+  
+  // MENGUBAH STATE MENJADI OBJECT AGAR MULTIPLE FILTER BISA TERBUKA BERSAMAAN
+  const [expandedFilters, setExpandedFilters] = useState({
+    sort: false,
+    notes: !!route?.params?.search,
+    gender: !!route?.params?.gender,
+    concentration: false,
+    rating: false
+  });
 
   const [searchInput, setSearchInput] = useState(route?.params?.search || "");
   const [filters, setFilters] = useState({
@@ -229,21 +237,21 @@ export default function CatalogScreen({ navigation, route }) {
 
   const updateFilter = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
-    // Opsional: Tutup filter setelah memilih
-    // setExpandedFilter(null);
   };
 
   const clearFilters = () => {
     setSearchInput("");
     setFilters({ search: "", gender: "", concentration: "", sort: "", minRating: "" });
-    setExpandedFilter(null);
+    // Tutup semua tab filter saat di-reset
+    setExpandedFilters({ sort: false, notes: false, gender: false, concentration: false, rating: false });
   };
 
+  // MENGUBAH TOGGLE AGAR BISA BUKA/TUTUP SECARA INDEPENDEN
   const toggleFilter = (filterKey) => {
-    setExpandedFilter(expandedFilter === filterKey ? null : filterKey);
+    setExpandedFilters((prev) => ({ ...prev, [filterKey]: !prev[filterKey] }));
   };
 
-  const hasActiveFilters = filters.gender || filters.concentration || filters.sort || filters.minRating;
+  const hasActiveFilters = filters.gender || filters.concentration || filters.sort || filters.minRating || filters.search;
   const displayData = products.length % 2 !== 0 ? [...products, { id: "__placeholder__", isPlaceholder: true }] : products;
 
   const ListHeader = () => (
@@ -253,18 +261,17 @@ export default function CatalogScreen({ navigation, route }) {
         options={SORT_OPTIONS} 
         value={filters.sort} 
         onChange={(v) => updateFilter("sort", v)} 
-        isExpanded={expandedFilter === "sort"}
+        isExpanded={expandedFilters.sort}
         onToggle={() => toggleFilter("sort")}
       />
       <View style={styles.filterDivider} />
       
-      {/* Jika kamu mencari berdasarkan searchInput alih-alih filter state, kamu mungkin perlu menyesuaikan props value/onChange di bawah */}
       <CollapsibleFilterSection 
         title="Aroma (Notes)" 
         options={CATEGORY_OPTIONS} 
-        value={filters.search} // Di kode asli, ini menggunakan searchInput
+        value={filters.search} // Menggunakan search parameter berdasarkan backend asli
         onChange={(v) => setSearchInput(v)} 
-        isExpanded={expandedFilter === "notes"}
+        isExpanded={expandedFilters.notes}
         onToggle={() => toggleFilter("notes")}
       />
       <View style={styles.filterDivider} />
@@ -274,7 +281,7 @@ export default function CatalogScreen({ navigation, route }) {
         options={GENDER_OPTIONS} 
         value={filters.gender} 
         onChange={(v) => updateFilter("gender", v)} 
-        isExpanded={expandedFilter === "gender"}
+        isExpanded={expandedFilters.gender}
         onToggle={() => toggleFilter("gender")}
       />
       <View style={styles.filterDivider} />
@@ -284,7 +291,7 @@ export default function CatalogScreen({ navigation, route }) {
         options={CONCENTRATION_OPTIONS} 
         value={filters.concentration} 
         onChange={(v) => updateFilter("concentration", v)} 
-        isExpanded={expandedFilter === "concentration"}
+        isExpanded={expandedFilters.concentration}
         onToggle={() => toggleFilter("concentration")}
       />
       <View style={styles.filterDivider} />
@@ -294,7 +301,7 @@ export default function CatalogScreen({ navigation, route }) {
         options={RATING_OPTIONS} 
         value={filters.minRating} 
         onChange={(v) => updateFilter("minRating", v)} 
-        isExpanded={expandedFilter === "rating"}
+        isExpanded={expandedFilters.rating}
         onToggle={() => toggleFilter("rating")}
       />
 
@@ -507,6 +514,6 @@ const styles = StyleSheet.create({
   pageButtonActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   pageButtonDisabled: { opacity: 0.3 },
   pageButtonText: { color: COLORS.text, fontSize: 14, fontWeight: "600" },
-  pageButtonTextActive: { color: COLORS.text, fontWeight: "800" },
+  pageButtonTextActive: { color: COLORS.onPrimary, fontWeight: "800" },
   pageEllipsis: { color: COLORS.textMuted, fontSize: 14, marginHorizontal: 4, fontWeight: "700" },
 });

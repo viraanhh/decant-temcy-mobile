@@ -1,20 +1,54 @@
 import { useState, useEffect } from "react";
-import { View, Text, FlatList, Pressable, Modal, StyleSheet, ActivityIndicator, Platform, ScrollView, KeyboardAvoidingView } from "react-native";
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  Modal,
+  StyleSheet,
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  KeyboardAvoidingView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../constants/colors";
 import { useAddress } from "../context/AddressContext";
-import { getProvinces, getCities } from "../services/shippingService";
+import { searchDestinations } from "../services/shippingService";
 import AppTextInput from "../components/AppTextInput";
 
-function PickerModal({ visible, title, items, labelKey, onSelect, onClose }) {
+function DestinationPickerModal({ visible, onSelect, onClose }) {
   const [search, setSearch] = useState("");
-  const filtered = items.filter((item) => item[labelKey].toLowerCase().includes(search.toLowerCase()));
+  const [results, setResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const keyword = search.trim();
+    if (keyword.length < 3) {
+      setResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsLoading(true);
+      try {
+        const list = await searchDestinations(keyword);
+        setResults(list);
+      } catch (err) {
+        setResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [search]);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} presentationStyle="pageSheet">
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>{title}</Text>
+          <Text style={styles.modalTitle}>Cari Wilayah Tujuan</Text>
           <Pressable onPress={onClose} style={styles.modalCloseIcon}>
             <Ionicons name="close" size={24} color={COLORS.text} />
           </Pressable>
@@ -22,12 +56,13 @@ function PickerModal({ visible, title, items, labelKey, onSelect, onClose }) {
 
         <View style={styles.modalSearchBox}>
           <Ionicons name="search" size={18} color={COLORS.textMuted} style={{ marginRight: 8 }} />
-          <AppTextInput 
-            style={styles.modalSearchInput} 
-            value={search} 
-            onChangeText={setSearch} 
-            placeholder="Cari wilayah..." 
+          <AppTextInput
+            style={styles.modalSearchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Ketik kecamatan, kota, atau kode pos (min. 3 huruf)..."
             placeholderTextColor={COLORS.textFaint}
+            autoFocus
           />
           {!!search && (
             <Pressable onPress={() => setSearch("")}>
@@ -36,20 +71,40 @@ function PickerModal({ visible, title, items, labelKey, onSelect, onClose }) {
           )}
         </View>
 
-        <FlatList
-          data={filtered}
-          keyExtractor={(item, i) => String(item.province_id ?? item.city_id ?? i)}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          renderItem={({ item }) => (
-            <Pressable 
-              style={({ pressed }) => [styles.modalItem, pressed && { backgroundColor: COLORS.surfaceLight }]} 
-              onPress={() => onSelect(item)}
-            >
-              <Text style={styles.modalItemText}>{item[labelKey]}</Text>
-              <Ionicons name="chevron-forward" size={16} color={COLORS.textFaint} />
-            </Pressable>
-          )}
-        />
+        {isLoading ? (
+          <ActivityIndicator style={{ marginTop: 32 }} color={COLORS.primary} />
+        ) : (
+          <FlatList
+            data={results}
+            keyboardShouldPersistTaps="handled"
+            keyExtractor={(item, i) => String(item.id ?? item.destination_id ?? i)}
+            contentContainerStyle={{ paddingBottom: 24 }}
+            ListEmptyComponent={
+              <Text style={styles.modalEmptyText}>
+                {search.trim().length < 3
+                  ? "Masukkan minimal 3 huruf nama kecamatan/kota."
+                  : "Wilayah tidak ditemukan."}
+              </Text>
+            }
+            renderItem={({ item }) => {
+              const title = item.label || [item.subdistrict_name, item.district_name, item.city_name, item.province_name].filter(Boolean).join(", ");
+              return (
+                <Pressable
+                  style={({ pressed }) => [styles.modalItem, pressed && { backgroundColor: COLORS.surfaceLight }]}
+                  onPress={() => onSelect(item)}
+                >
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={styles.modalItemText}>{title}</Text>
+                    {!!item.zip_code && (
+                      <Text style={styles.modalItemSub}>Kode Pos: {item.zip_code}</Text>
+                    )}
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={COLORS.textFaint} />
+                </Pressable>
+              );
+            }}
+          />
+        )}
       </View>
     </Modal>
   );
@@ -62,27 +117,20 @@ export default function AddAddressScreen({ navigation, route }) {
   const [label, setLabel] = useState("");
   const [recipientName, setRecipientName] = useState("");
   const [phone, setPhone] = useState("");
+  const [selectedDestination, setSelectedDestination] = useState(null);
   const [district, setDistrict] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [detail, setDetail] = useState("");
 
-  const [provinces, setProvinces] = useState([]);
-  const [cities, setCities] = useState([]);
-  const [selectedProvince, setSelectedProvince] = useState(null);
-  const [selectedCity, setSelectedCity] = useState(null);
-  const [provinceModalOpen, setProvinceModalOpen] = useState(false);
-  const [cityModalOpen, setCityModalOpen] = useState(false);
+  const [destinationModalOpen, setDestinationModalOpen] = useState(false);
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => { getProvinces().then(setProvinces); }, []);
-
-  const handlePickProvince = async (province) => {
-    setSelectedProvince(province);
-    setSelectedCity(null);
-    setProvinceModalOpen(false);
-    const cityList = await getCities(province.province_id);
-    setCities(cityList);
+  const handlePickDestination = (item) => {
+    setSelectedDestination(item);
+    setDistrict(item.district_name || item.subdistrict_name || "");
+    setPostalCode(item.zip_code || item.postal_code || "");
+    setDestinationModalOpen(false);
   };
 
   const formatPhoneInput = (text) => {
@@ -99,21 +147,27 @@ export default function AddAddressScreen({ navigation, route }) {
 
   const handleSave = async () => {
     setError("");
-    if (!recipientName || !phone || !selectedProvince || !selectedCity || !detail) {
-      setError("Mohon lengkapi kolom Nama, No. Telepon, Provinsi, Kota, dan Alamat Lengkap");
+    if (!recipientName || !phone || !selectedDestination || !detail) {
+      setError("Mohon lengkapi kolom Nama, No. Telepon, Wilayah Tujuan, dan Alamat Lengkap");
       return;
     }
+
+    const provinceName = selectedDestination.province_name || selectedDestination.province || "";
+    const cityName = selectedDestination.city_name || selectedDestination.city || "";
+    const destId = String(selectedDestination.id ?? selectedDestination.destination_id ?? selectedDestination.city_id ?? "");
+
     setIsSaving(true);
     try {
       const created = await addAddress({
         label: label || "Alamat",
-        recipientName, phone,
-        province: selectedProvince.province,
-        provinceId: selectedProvince.province_id,
-        city: selectedCity.city_name,
-        cityId: selectedCity.city_id,
+        recipientName,
+        phone,
+        province: provinceName || cityName,
+        provinceId: String(selectedDestination.province_id ?? ""),
+        city: cityName || selectedDestination.label,
+        cityId: destId,
         district,
-        postalCode: postalCode || selectedCity.postal_code,
+        postalCode,
         detail,
       });
       if (selectMode) selectAddress(created.id);
@@ -125,11 +179,18 @@ export default function AddAddressScreen({ navigation, route }) {
     }
   };
 
+  const destinationDisplay = selectedDestination
+    ? selectedDestination.label ||
+      [selectedDestination.district_name, selectedDestination.city_name, selectedDestination.province_name]
+        .filter(Boolean)
+        .join(", ")
+    : "";
+
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView
           keyboardDismissMode="on-drag"
@@ -140,12 +201,18 @@ export default function AddAddressScreen({ navigation, route }) {
           {/* Section: Info Label & Kontak */}
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Informasi Penerima</Text>
-            
+
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Label Alamat</Text>
               <View style={styles.inputBox}>
                 <Ionicons name="bookmark-outline" size={18} color={COLORS.textMuted} />
-                <AppTextInput style={styles.inputField} value={label} onChangeText={setLabel} placeholder="Contoh: Rumah, Kantor, Kos" placeholderTextColor={COLORS.textFaint} />
+                <AppTextInput
+                  style={styles.inputField}
+                  value={label}
+                  onChangeText={setLabel}
+                  placeholder="Contoh: Rumah, Kantor, Kos"
+                  placeholderTextColor={COLORS.textFaint}
+                />
               </View>
             </View>
 
@@ -153,7 +220,13 @@ export default function AddAddressScreen({ navigation, route }) {
               <Text style={styles.inputLabel}>Nama Penerima</Text>
               <View style={styles.inputBox}>
                 <Ionicons name="person-outline" size={18} color={COLORS.textMuted} />
-                <AppTextInput style={styles.inputField} value={recipientName} onChangeText={setRecipientName} placeholder="Nama lengkap penerima" placeholderTextColor={COLORS.textFaint} />
+                <AppTextInput
+                  style={styles.inputField}
+                  value={recipientName}
+                  onChangeText={setRecipientName}
+                  placeholder="Nama lengkap penerima"
+                  placeholderTextColor={COLORS.textFaint}
+                />
               </View>
             </View>
 
@@ -161,7 +234,15 @@ export default function AddAddressScreen({ navigation, route }) {
               <Text style={styles.inputLabel}>No. Telepon</Text>
               <View style={styles.inputBox}>
                 <Ionicons name="call-outline" size={18} color={COLORS.textMuted} />
-                <AppTextInput style={styles.inputField} value={phone} onChangeText={(v) => setPhone(formatPhoneInput(v))} placeholder="0812-3456-7890" placeholderTextColor={COLORS.textFaint} keyboardType="phone-pad" maxLength={14} />
+                <AppTextInput
+                  style={styles.inputField}
+                  value={phone}
+                  onChangeText={(v) => setPhone(formatPhoneInput(v))}
+                  placeholder="0812-3456-7890"
+                  placeholderTextColor={COLORS.textFaint}
+                  keyboardType="phone-pad"
+                  maxLength={14}
+                />
               </View>
             </View>
           </View>
@@ -171,59 +252,63 @@ export default function AddAddressScreen({ navigation, route }) {
             <Text style={styles.sectionTitle}>Lokasi Pengiriman</Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Provinsi</Text>
-              <Pressable style={styles.selectInput} onPress={() => setProvinceModalOpen(true)}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={styles.inputLabel}>Kota / Kecamatan / Kode Pos</Text>
+              <Pressable style={styles.selectInput} onPress={() => setDestinationModalOpen(true)}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1, paddingRight: 8 }}>
                   <Ionicons name="map-outline" size={18} color={COLORS.textMuted} />
-                  <Text style={selectedProvince ? styles.selectInputText : styles.selectInputPlaceholder}>
-                    {selectedProvince?.province || "Pilih Provinsi"}
+                  <Text
+                    style={destinationDisplay ? styles.selectInputText : styles.selectInputPlaceholder}
+                    numberOfLines={2}
+                  >
+                    {destinationDisplay || "Cari Kecamatan / Kota / Kode Pos"}
                   </Text>
                 </View>
-                <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
-              </Pressable>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Kota / Kabupaten</Text>
-              <Pressable
-                style={[styles.selectInput, !selectedProvince && { opacity: 0.5, backgroundColor: COLORS.surfaceLight }]}
-                onPress={() => selectedProvince && setCityModalOpen(true)}
-                disabled={!selectedProvince}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <Ionicons name="business-outline" size={18} color={COLORS.textMuted} />
-                  <Text style={selectedCity ? styles.selectInputText : styles.selectInputPlaceholder}>
-                    {selectedCity?.city_name || (selectedProvince ? "Pilih Kota/Kabupaten" : "Pilih Provinsi terlebih dahulu")}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-down" size={16} color={COLORS.textMuted} />
+                <Ionicons name="search" size={16} color={COLORS.textMuted} />
               </Pressable>
             </View>
 
             <View style={styles.rowInputs}>
               <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Kecamatan <Text style={styles.optionalText}>(Opsional)</Text></Text>
+                <Text style={styles.inputLabel}>
+                  Kecamatan <Text style={styles.optionalText}>(Otomatis/Edit)</Text>
+                </Text>
                 <View style={styles.inputBox}>
-                  <AppTextInput style={[styles.inputField, { paddingHorizontal: 4 }]} value={district} onChangeText={setDistrict} placeholder="Kecamatan" placeholderTextColor={COLORS.textFaint} />
+                  <AppTextInput
+                    style={[styles.inputField, { paddingHorizontal: 4 }]}
+                    value={district}
+                    onChangeText={setDistrict}
+                    placeholder="Kecamatan"
+                    placeholderTextColor={COLORS.textFaint}
+                  />
                 </View>
               </View>
               <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.inputLabel}>Kode Pos <Text style={styles.optionalText}>(Opsional)</Text></Text>
+                <Text style={styles.inputLabel}>
+                  Kode Pos <Text style={styles.optionalText}>(Otomatis/Edit)</Text>
+                </Text>
                 <View style={styles.inputBox}>
-                  <AppTextInput style={[styles.inputField, { paddingHorizontal: 4 }]} value={postalCode} onChangeText={setPostalCode} placeholder="Kode Pos" placeholderTextColor={COLORS.textFaint} keyboardType="number-pad" maxLength={5} />
+                  <AppTextInput
+                    style={[styles.inputField, { paddingHorizontal: 4 }]}
+                    value={postalCode}
+                    onChangeText={setPostalCode}
+                    placeholder="Kode Pos"
+                    placeholderTextColor={COLORS.textFaint}
+                    keyboardType="number-pad"
+                    maxLength={5}
+                  />
                 </View>
               </View>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Alamat Lengkap</Text>
-              <AppTextInput 
-                style={[styles.inputBoxArea, { height: 90, alignItems: "flex-start", paddingTop: 10 }]} 
-                value={detail} 
-                onChangeText={setDetail} 
-                placeholder="Nama jalan, nomor rumah, blok, RT/RW..." 
-                placeholderTextColor={COLORS.textFaint} 
-                multiline 
+              <AppTextInput
+                style={[styles.inputBoxArea, { height: 90, alignItems: "flex-start", paddingTop: 10 }]}
+                value={detail}
+                onChangeText={setDetail}
+                placeholder="Nama jalan, nomor rumah, blok, RT/RW..."
+                placeholderTextColor={COLORS.textFaint}
+                multiline
               />
             </View>
           </View>
@@ -239,13 +324,13 @@ export default function AddAddressScreen({ navigation, route }) {
 
         {/* Sticky Footer */}
         <View style={styles.footer}>
-          <Pressable 
-            style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]} 
-            onPress={handleSave} 
+          <Pressable
+            style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.9, transform: [{ scale: 0.99 }] }]}
+            onPress={handleSave}
             disabled={isSaving}
           >
             {isSaving ? (
-              <ActivityIndicator color={COLORS.background} />
+              <ActivityIndicator color={COLORS.onPrimary} />
             ) : (
               <Text style={styles.saveButtonText}>Simpan Alamat</Text>
             )}
@@ -253,9 +338,12 @@ export default function AddAddressScreen({ navigation, route }) {
         </View>
       </KeyboardAvoidingView>
 
-      {/* Modal Pickers */}
-      <PickerModal visible={provinceModalOpen} title="Pilih Provinsi" items={provinces} labelKey="province" onSelect={handlePickProvince} onClose={() => setProvinceModalOpen(false)} />
-      <PickerModal visible={cityModalOpen} title="Pilih Kota/Kabupaten" items={cities} labelKey="city_name" onSelect={(city) => { setSelectedCity(city); setCityModalOpen(false); }} onClose={() => setCityModalOpen(false)} />
+      {/* Modal Pencarian Destinasi */}
+      <DestinationPickerModal
+        visible={destinationModalOpen}
+        onSelect={handlePickDestination}
+        onClose={() => setDestinationModalOpen(false)}
+      />
     </View>
   );
 }
@@ -332,7 +420,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 14,
   },
-  selectInputText: { color: COLORS.text, fontSize: 14, fontWeight: "500" },
+  selectInputText: { color: COLORS.text, fontSize: 14, fontWeight: "500", flex: 1 },
   selectInputPlaceholder: { color: COLORS.textFaint, fontSize: 14 },
 
   errorBanner: {
@@ -365,7 +453,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  saveButtonText: { color: COLORS.background, fontWeight: "700", fontSize: 15 },
+  saveButtonText: { color: COLORS.onPrimary, fontWeight: "700", fontSize: 15 },
 
   // Modal Styles
   modalContainer: { flex: 1, backgroundColor: COLORS.background, paddingHorizontal: 16, paddingTop: 20 },
@@ -399,7 +487,12 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 14,
   },
-
+  modalEmptyText: {
+    color: COLORS.textMuted,
+    textAlign: "center",
+    marginTop: 24,
+    fontSize: 13,
+  },
   modalItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -410,4 +503,5 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.border,
   },
   modalItemText: { color: COLORS.text, fontSize: 14, fontWeight: "500" },
+  modalItemSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
 });

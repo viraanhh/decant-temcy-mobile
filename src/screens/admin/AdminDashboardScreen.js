@@ -37,8 +37,7 @@ const STATUS_COLORS = {
   cancelled: "#EF4444",
 };
 
-const SIZES = [1, 2, 3, 5];
-const totalStock = (p) => SIZES.reduce((sum, s) => sum + (Number(p[`stock_${s}ml`]) || 0), 0);
+const totalStock = (p) => Number(p.stock_ml) || 0;
 const EMPTY_STOCK = { products: [], summary: { habis: 0, menipis: 0, aman: 0 } };
 
 export default function AdminDashboardScreen({ navigation }) {
@@ -222,7 +221,7 @@ export default function AdminDashboardScreen({ navigation }) {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.recommendationTitle}>Segera Restock: {p.product_name}</Text>
                   <Text style={styles.recommendationText}>
-                    Terjual <Text style={{ fontWeight: "700", color: COLORS.text }}>{p.sold_count}x</Text> namun stok tersisa <Text style={{ fontWeight: "700", color: "#EF4444" }}>{totalStock(p)} vial</Text> — produk sangat laris, berisiko kehabisan.
+                    Terjual <Text style={{ fontWeight: "700", color: COLORS.text }}>{p.sold_count}x</Text> namun stok tersisa <Text style={{ fontWeight: "700", color: "#EF4444" }}>{totalStock(p)} ml</Text> — produk sangat laris, berisiko kehabisan.
                   </Text>
                 </View>
               </View>

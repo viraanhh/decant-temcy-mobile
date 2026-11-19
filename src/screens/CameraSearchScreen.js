@@ -255,10 +255,10 @@ function CameraSearchScreen({ navigation }) {
               disabled={isSearching}
             >
               {isSearching ? (
-                <ActivityIndicator color={COLORS.text} />
+                <ActivityIndicator color={COLORS.onPrimary} />
               ) : (
                 <>
-                  <Ionicons name="search" size={18} color={COLORS.text} style={{ marginRight: 8 }} />
+                  <Ionicons name="search" size={18} color={COLORS.onPrimary} style={{ marginRight: 8 }} />
                   <Text style={styles.searchButtonText}>Pindai Gambar</Text>
                 </>
               )}
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   actionButtonText: { color: COLORS.text, fontSize: 14, fontWeight: "500" },
   searchButton: { flexDirection: "row", backgroundColor: COLORS.primary, borderRadius: 12, paddingVertical: 16, alignItems: "center", justifyContent: "center", marginTop: 16, shadowColor: COLORS.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 5 },
   searchButtonDisabled: { opacity: 0.7 },
-  searchButtonText: { color: COLORS.text, fontWeight: "700", fontSize: 15 },
+  searchButtonText: { color: COLORS.onPrimary, fontWeight: "700", fontSize: 15 },
   infoBanner: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, marginTop: 20, gap: 8 },
   recognizedText: { color: COLORS.textMuted, fontSize: 13, flex: 1 },
   errorBanner: { flexDirection: "row", alignItems: "center", backgroundColor: `${COLORS.primary}15`, borderWidth: 1, borderColor: `${COLORS.primary}50`, borderRadius: 8, padding: 12, marginTop: 20, gap: 8 },

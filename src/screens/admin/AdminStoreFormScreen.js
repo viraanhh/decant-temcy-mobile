@@ -131,7 +131,7 @@ export default function AdminStoreFormScreen({ route, navigation }) {
           />
 
           <Pressable style={styles.saveButton} onPress={handleSave} disabled={isSaving}>
-            {isSaving ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.saveButtonText}>{isEdit ? "Simpan Perubahan" : "Tambah Store"}</Text>}
+            {isSaving ? <ActivityIndicator color={COLORS.onPrimary} /> : <Text style={styles.saveButtonText}>{isEdit ? "Simpan Perubahan" : "Tambah Store"}</Text>}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   label: { color: COLORS.textMuted, fontSize: 12, marginTop: 6 },
   input: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, color: COLORS.text },
   saveButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 20 },
-  saveButtonText: { color: COLORS.text, fontWeight: "600" },
+  saveButtonText: { color: COLORS.onPrimary, fontWeight: "600" },
   
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: SPACING.lg },
   modalCard: { backgroundColor: COLORS.surface, borderRadius: 24, padding: 24, width: "100%", maxWidth: 340, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8 },

@@ -299,5 +299,5 @@ const styles = StyleSheet.create({
   subtotalValue: { color: COLORS.text, fontSize: 16, fontWeight: "700" },
   checkoutButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center" },
   checkoutButtonDisabled: { backgroundColor: COLORS.surfaceLight },
-  checkoutButtonText: { color: COLORS.text, fontWeight: "600" },
+  checkoutButtonText: { color: COLORS.onPrimary, fontWeight: "600" },
 });

@@ -1,4 +1,3 @@
-
 {
   "expo": {
     "name": "decant-temcy-mobile",
@@ -7,7 +6,7 @@
     "scheme": "decanttemcy",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/logo.png",

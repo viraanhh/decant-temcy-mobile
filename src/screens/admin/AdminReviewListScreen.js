@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
   timeOptionText: { color: COLORS.text, fontSize: 14 },
   timeOptionTextActive: { color: COLORS.primary, fontWeight: "700" },
   applyButton: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, padding: 14, alignItems: "center", marginTop: SPACING.md },
-  applyButtonText: { color: COLORS.text, fontWeight: "600" },
+  applyButtonText: { color: COLORS.onPrimary, fontWeight: "600" },
 
   deleteButton: { flexDirection: "row", alignItems: "center", gap: 5 },
   deleteText: { color: "#FF4B4B", fontSize: 12, fontWeight: "700" },

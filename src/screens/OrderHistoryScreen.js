@@ -394,5 +394,5 @@ const styles = StyleSheet.create({
   dateInput: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 12, color: COLORS.text, fontSize: 15 },
   
   applyButton: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, padding: 14, alignItems: "center", marginTop: SPACING.lg },
-  applyButtonText: { color: COLORS.text, fontWeight: "700", fontSize: 15 },
+  applyButtonText: { color: COLORS.onPrimary, fontWeight: "700", fontSize: 15 },
 });

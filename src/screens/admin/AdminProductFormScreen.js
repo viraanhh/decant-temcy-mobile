@@ -51,6 +51,8 @@ export default function AdminProductFormScreen({ route, navigation }) {
     price_2ml: existing?.variants?.find((v) => v.size_ml === 2)?.price ? formatNumberWithDots(existing.variants.find((v) => v.size_ml === 2).price) : "",
     price_3ml: existing?.variants?.find((v) => v.size_ml === 3)?.price ? formatNumberWithDots(existing.variants.find((v) => v.size_ml === 3).price) : "",
     price_5ml: existing?.variants?.find((v) => v.size_ml === 5)?.price ? formatNumberWithDots(existing.variants.find((v) => v.size_ml === 5).price) : "",
+    price_10ml: existing?.variants?.find((v) => v.size_ml === 10)?.price ? formatNumberWithDots(existing.variants.find((v) => v.size_ml === 10).price) : "",
+    stock_ml: existing?.stock_ml ? String(existing.stock_ml) : "",
   });
 
   const [form, setForm] = useState(initialForm);
@@ -98,10 +100,13 @@ export default function AdminProductFormScreen({ route, navigation }) {
 
   const handleSave = async () => {
     setError("");
-    if (!form.brand || !form.product_name || !form.price_1ml) {
-      setError("Brand, nama produk, dan harga 1ml wajib diisi!");
+    
+    // VALIDASI: Pastikan brand, nama produk, dan semua harga (1ml sampai 10ml) diisi
+    if (!form.brand || !form.product_name || !form.price_1ml || !form.price_2ml || !form.price_3ml || !form.price_5ml || !form.price_10ml) {
+      setError("Brand, nama produk, dan seluruh harga ukuran (1ml - 10ml) wajib diisi!");
       return;
     }
+
     setIsSaving(true);
     try {
       const payload = {
@@ -110,6 +115,7 @@ export default function AdminProductFormScreen({ route, navigation }) {
         price_2ml: parseFormattedNumber(form.price_2ml),
         price_3ml: parseFormattedNumber(form.price_3ml),
         price_5ml: parseFormattedNumber(form.price_5ml),
+        price_10ml: parseFormattedNumber(form.price_10ml),
       };
 
       const productId = existing?.product_id || existing?.id;
@@ -207,7 +213,7 @@ export default function AdminProductFormScreen({ route, navigation }) {
             <AppTextInput style={styles.input} value={form.base_notes} onChangeText={(v) => setField("base_notes", v)} placeholder="Contoh: Musk, Sandalwood" placeholderTextColor={COLORS.textMuted} />
           </View>
 
-          {/* KARTU DESKRIPSI & ULASAN (Semua Menggunakan textAreaLong / Diperpanjang) */}
+          {/* KARTU DESKRIPSI & ULASAN */}
           <View style={styles.card}>
             <Text style={styles.cardSectionTitle}>Deskripsi</Text>
 
@@ -245,9 +251,9 @@ export default function AdminProductFormScreen({ route, navigation }) {
             />
           </View>
 
-          {/* KARTU HARGA */}
+          {/* KARTU HARGA & STOK */}
           <View style={styles.card}>
-            <Text style={styles.cardSectionTitle}>Pengaturan Harga per Ukuran (Rp)</Text>
+            <Text style={styles.cardSectionTitle}>Pengaturan Harga & Stok</Text>
 
             <View style={styles.priceGrid}>
               <View style={styles.priceColumn}>
@@ -266,11 +272,22 @@ export default function AdminProductFormScreen({ route, navigation }) {
                 <Text style={styles.priceLabel}>5 ml <Text style={{ color: "#EF4444" }}>*</Text></Text>
                 <AppTextInput style={styles.input} value={form.price_5ml} onChangeText={(v) => setField("price_5ml", formatNumberWithDots(v))} placeholder="0" placeholderTextColor={COLORS.textMuted} keyboardType="number-pad" />
               </View>
+              <View style={styles.priceColumn}>
+                <Text style={styles.priceLabel}>10 ml <Text style={{ color: "#EF4444" }}>*</Text></Text>
+                <AppTextInput style={styles.input} value={form.price_10ml} onChangeText={(v) => setField("price_10ml", formatNumberWithDots(v))} placeholder="0" placeholderTextColor={COLORS.textMuted} keyboardType="number-pad" />
+              </View>
             </View>
 
-            <View style={styles.stockNote}>
-              <Ionicons name="information-circle-outline" size={16} color={COLORS.primary} />
-              <Text style={styles.stockNoteText}>Stok fisik per ukuran (1, 2, 3, dan 5 ml) diatur terpisah melalui menu Lainnya → Inventori.</Text>
+            <Text style={styles.label}>Sisa Stok (ml, dipakai bersama semua ukuran)</Text>
+            <View style={styles.inputWithSuffixContainer}>
+              <AppTextInput
+                style={[styles.input, styles.inputWithoutBorder]}
+                value={form.stock_ml}
+                onChangeText={(v) => setField("stock_ml", v.replace(/[^0-9.]/g, ""))}
+                placeholder="Contoh: 150"
+                keyboardType="decimal-pad"
+              />
+              <Text style={styles.inlineSuffix}>ml</Text>
             </View>
           </View>
 
@@ -364,22 +381,29 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 14
   },
-  // KETIGA TEXTAREA MENGGUNAKAN UKURAN PANJANG YANG SAMA (180px)
-  textAreaLong: { height: 180, paddingTop: 12 },
   
-  stockNote: { 
+  inputWithSuffixContainer: { 
     flexDirection: "row", 
     alignItems: "center", 
-    gap: 8, 
-    backgroundColor: `${COLORS.primary}08`, 
+    backgroundColor: COLORS.surface, 
     borderWidth: 1, 
-    borderColor: `${COLORS.primary}20`, 
-    borderRadius: RADIUS.sm, 
-    padding: SPACING.sm, 
-    marginTop: SPACING.md 
+    borderColor: COLORS.border, 
+    borderRadius: 8, 
+    paddingRight: 14 
   },
-  stockNoteText: { flex: 1, color: COLORS.textMuted, fontSize: 11, lineHeight: 16 },
+  inputWithoutBorder: { 
+    flex: 1, 
+    borderWidth: 0, 
+    backgroundColor: "transparent" 
+  },
+  inlineSuffix: { 
+    color: COLORS.textMuted, 
+    fontSize: 14, 
+    fontWeight: "600" 
+  },
 
+  textAreaLong: { height: 180, paddingTop: 12 },
+  
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 2 },
   chip: { 
     backgroundColor: COLORS.background, 

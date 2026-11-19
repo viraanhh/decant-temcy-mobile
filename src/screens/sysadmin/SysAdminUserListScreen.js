@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   filterChip: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.full, paddingVertical: 6, paddingHorizontal: 14 },
   filterChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   filterText: { color: COLORS.textMuted, fontSize: 12, fontWeight: "600" },
-  filterTextActive: { color: COLORS.text },
+  filterTextActive: { color: COLORS.onPrimary },
 
   emptyText: { color: COLORS.textMuted, fontSize: 12, textAlign: "center", marginTop: 20 },
   card: {

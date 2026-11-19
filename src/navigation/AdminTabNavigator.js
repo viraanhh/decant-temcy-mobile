@@ -18,6 +18,10 @@ import AdminStoreListScreen from "../screens/admin/AdminStoreListScreen";
 import AdminStoreFormScreen from "../screens/admin/AdminStoreFormScreen";
 import AdminAIInsightScreen from "../screens/admin/AdminAIInsightScreen";
 
+// IMPORT 2 SCREEN BARU DI SINI
+import AdminCouriersScreen from "../screens/admin/AdminCouriersScreen";
+import AdminContactsScreen from "../screens/admin/AdminContactsScreen";
+
 const Tab = createBottomTabNavigator();
 const ProductStack = createNativeStackNavigator();
 const OrderStack = createNativeStackNavigator();
@@ -60,6 +64,10 @@ function MoreStackNavigator() {
       <MoreStack.Screen name="AdminStores" component={AdminStoreListScreen} options={{ title: "Cabang Toko" }} />
       <MoreStack.Screen name="AdminStoreForm" component={AdminStoreFormScreen} options={{ title: "Form Store" }} />
       <MoreStack.Screen name="AdminAIInsight" component={AdminAIInsightScreen} options={{ title: "AI Insight" }} />
+      
+      {/* DAFTARKAN 2 SCREEN BARU DI SINI */}
+      <MoreStack.Screen name="AdminCouriers" component={AdminCouriersScreen} options={{ title: "Ekspedisi Pengiriman" }} />
+      <MoreStack.Screen name="AdminContacts" component={AdminContactsScreen} options={{ title: "Kontak & Sosial Media" }} />
     </MoreStack.Navigator>
   );
 }

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../constants/colors";
 import { SPACING, RADIUS, CARD_SHADOW } from "../../constants/theme";
 import { useAuth } from "../../context/AuthContext";
+import ThemeSelector from "../../components/ThemeSelector";
 
 const MENU_ITEMS = [
   { icon: "cube-outline", label: "Inventori", route: "AdminInventory" },
@@ -12,20 +13,21 @@ const MENU_ITEMS = [
   { icon: "star-outline", label: "Review", route: "AdminReviews" },
   { icon: "pricetag-outline", label: "Voucher", route: "AdminVouchers" },
   { icon: "sparkles-outline", label: "AI Insight", route: "AdminAIInsight" },
+  { icon: "bicycle-outline", label: "Ekspedisi Pengiriman", route: "AdminCouriers" },
+  { icon: "call-outline", label: "Kontak & Sosial Media", route: "AdminContacts" },
 ];
 
 export default function AdminMoreScreen({ navigation }) {
   const { user, logout } = useAuth();
-
   const insets = useSafeAreaInsets();
-  const safeTopPadding = insets.top > 0 ? insets.top : (Platform.OS === "android" ? StatusBar.currentHeight : 44);
-
+  
+  const safeTopPadding = insets.top > 0 ? insets.top : Platform.OS === "android" ? StatusBar.currentHeight : 44;
   const displayName = user?.full_name || user?.name || "Admin";
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
     <View style={[styles.container, { paddingTop: safeTopPadding }]}>
-      <ScrollView bounces={false}>
+      <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <View style={styles.avatarPlaceholder}>
             <Text style={styles.avatarInitial}>{initial}</Text>
@@ -42,9 +44,7 @@ export default function AdminMoreScreen({ navigation }) {
             <Pressable
               key={item.route}
               style={[styles.menuItem, index < MENU_ITEMS.length - 1 && styles.menuItemBorder]}
-              onPress={() => {
-                navigation.navigate(item.route);
-              }}
+              onPress={() => navigation.navigate(item.route)}
             >
               <View style={styles.menuItemLeft}>
                 <Ionicons name={item.icon} size={19} color={COLORS.textMuted} />
@@ -55,11 +55,12 @@ export default function AdminMoreScreen({ navigation }) {
           ))}
         </View>
 
+        <ThemeSelector style={{ marginHorizontal: SPACING.lg, marginTop: SPACING.lg }} />
+
         <Pressable
           style={styles.logoutButton}
           onPress={async () => {
             await logout();
-            // FIX: Reset navigasi diarahkan ke "MainTabs" agar kembali ke tampilan tamu/customer
             navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
           }}
         >
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   header: { alignItems: "center", paddingTop: SPACING.lg, paddingBottom: SPACING.xl },
   avatarPlaceholder: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  avatarInitial: { color: COLORS.text, fontSize: 26, fontWeight: "700" },
+  avatarInitial: { color: COLORS.onPrimary, fontSize: 26, fontWeight: "700" },
   userName: { color: COLORS.text, fontSize: 16, fontWeight: "700", marginTop: 12 },
   roleBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.primary, borderRadius: RADIUS.full, paddingVertical: 5, paddingHorizontal: 12, marginTop: 8 },
   roleBadgeText: { color: COLORS.primary, fontSize: 10, fontWeight: "700", letterSpacing: 0.5 },

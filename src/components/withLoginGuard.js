@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   title: { color: COLORS.text, fontSize: 18, fontWeight: "700", textAlign: "center", marginBottom: 8 },
   message: { color: COLORS.textMuted, fontSize: 13, textAlign: "center", lineHeight: 21, marginBottom: 24 },
   primary: { backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 14, paddingHorizontal: 44 },
-  primaryText: { color: COLORS.text, fontWeight: "700", fontSize: 14 },
+  primaryText: { color: COLORS.onPrimary, fontWeight: "700", fontSize: 14 },
   registerText: { color: COLORS.textMuted, fontSize: 12 },
   registerLink: { color: COLORS.primary, fontWeight: "700" },
 });

@@ -135,7 +135,7 @@ export default function LoginScreen({ navigation }) {
         disabled={isSubmitting}
       >
         {isSubmitting ? (
-          <ActivityIndicator color={COLORS.text} />
+          <ActivityIndicator color={COLORS.onPrimary} />
         ) : (
           <Text style={styles.buttonText}>Masuk</Text>
         )}
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   buttonText: {
-    color: COLORS.text,
+    color: COLORS.onPrimary,
     fontWeight: "600",
   },
   dividerRow: {
@@ -266,9 +266,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    gap: 12,
     backgroundColor: "#ffffff",
-    borderWidth: 1,
+    borderWidth: 1,            
     borderColor: COLORS.border,
     borderRadius: 8,
     padding: 14,

@@ -6,7 +6,7 @@ import { COLORS } from "../../constants/colors";
 import { SPACING, RADIUS, CARD_SHADOW } from "../../constants/theme";
 import { getDashboardStats, getSalesReport, getAdminInventory } from "../../services/adminService";
 
-const SIZES = [1, 2, 3, 5];
+const SIZES = [1, 2, 3, 5, 10];
 const STOCK_MIN_TOTAL = 10;
 const LOW_MARGIN_PCT = 20;
 const DAY = 24 * 60 * 60 * 1000;

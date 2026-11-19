@@ -72,7 +72,7 @@ export default function WriteReviewScreen({ route, navigation }) {
         />
 
         <Pressable style={styles.submitButton} onPress={handleSubmit} disabled={isSubmitting}>
-          {isSubmitting ? <ActivityIndicator color={COLORS.text} /> : <Text style={styles.submitButtonText}>Kirim Ulasan</Text>}
+          {isSubmitting ? <ActivityIndicator color={COLORS.onPrimary} /> : <Text style={styles.submitButtonText}>Kirim Ulasan</Text>}
         </Pressable>
       </ScrollView>
 
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     borderRadius: 8, padding: 12, color: COLORS.text, textAlignVertical: "top", minHeight: 100,
   },
   submitButton: { backgroundColor: COLORS.primary, borderRadius: 8, padding: 14, alignItems: "center", marginTop: 24 },
-  submitButtonText: { color: COLORS.text, fontWeight: "600" },
+  submitButtonText: { color: COLORS.onPrimary, fontWeight: "600" },
 
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: SPACING.lg },
   card: { backgroundColor: COLORS.surface, borderRadius: 24, padding: 24, width: "100%", maxWidth: 340, alignItems: "center", elevation: 8 },
